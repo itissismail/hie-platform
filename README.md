@@ -3,6 +3,7 @@
 A comprehensive health information exchange platform built with microservices architecture for processing, validating, and managing HL7 messages.
 
 ## Architecture Overview
+![hie-arch.png](docs%2Fhie-arch.png)
 
 The HIE Platform is designed as a distributed system with the following core components:
 
