@@ -23,10 +23,21 @@ spring:
       ddl-auto: validate
     show-sql: false
 
+#  security:
+#    user:
+#      name: admin
+#      password: admin123
+#      roles: ADMIN
 hie:
   audit:
     database:
       enabled: false
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+
 #  cloud:
 #    gateway:
 #      discovery:

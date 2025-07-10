@@ -14,6 +14,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/messages")
+@Deprecated
 public class MessageController {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageController.class);

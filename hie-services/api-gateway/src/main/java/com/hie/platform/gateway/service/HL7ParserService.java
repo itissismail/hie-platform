@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
+@Deprecated
 public class HL7ParserService {
 
     private static final Logger logger = LoggerFactory.getLogger(HL7ParserService.class);

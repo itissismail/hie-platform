@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 @Service
+@Deprecated
 public class MessageIngestionService {
 
     private static final Logger logger = LoggerFactory.getLogger(MessageIngestionService.class);
