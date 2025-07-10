@@ -40,6 +40,29 @@ The HIE Platform is designed as a distributed system with the following core com
 - **Grafana** - Monitoring dashboards
 - **Jaeger** - Distributed tracing
 
+### Recommended Infrastructure:
+```
+ Production sizing recommendations
+Services:
+- API Gateway: 2 instances (2 CPU, 4GB RAM each)
+- Validation Service: 3 instances (1 CPU, 2GB RAM each)
+- InTake Service: 5 instances (2 CPU, 4GB RAM each)
+- Conversion Service: 4 instances (2 CPU, 4GB RAM each)
+- Storage Service: 3 instances (1 CPU, 2GB RAM each)
+
+Message Queue:
+- RabbitMQ Cluster: 3 nodes with high availability
+- Queue depth monitoring with auto-scaling triggers
+
+Database:
+- PostgreSQL with read replicas for audit queries
+- Connection pooling (HikariCP) with 20 connections per service instance
+
+Storage:
+- S3/MinIO with lifecycle policies for archival
+- Redis for caching frequently accessed data
+
+```
 ## Prerequisites
 
 - macOS (this setup is optimized for macOS)
