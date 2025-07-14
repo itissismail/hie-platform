@@ -1,0 +1,12 @@
+roles:
+  # Login JWT token roles are "administrator" and "user"
+  - roleName: "fhir-user"
+    resources:
+      /R4/Patient: [ "GET" ]
+      /R4/Condition: [ "GET" ]
+      /ingest: [ "POST" ]
+
+  - roleName: "app-user"
+    resources:
+      /R4/Patient: ["GET"]
+      /ingested: ["POST"]

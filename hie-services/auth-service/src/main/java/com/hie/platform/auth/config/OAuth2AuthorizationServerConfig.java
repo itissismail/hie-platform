@@ -17,6 +17,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -98,7 +99,10 @@ public class OAuth2AuthorizationServerConfig {
                         .anyRequest().authenticated()
                 )
                 .csrf(csrf -> csrf.disable())
-                .formLogin(Customizer.withDefaults());
+                .formLogin(AbstractHttpConfigurer::disable)
+                .httpBasic(Customizer.withDefaults());
+                //.formLogin(Customizer.withDefaults());
+
 
         return http.build();
     }
@@ -197,7 +201,8 @@ public class OAuth2AuthorizationServerConfig {
                             .claim("client_name", client.getClientName())
                             .claim("roles", client.getRolesList())
                             .claim("scopes", client.getScopes().split(","))
-                            .claim("grant_type", "client_credentials");
+                            .claim("grant_type", "client_credentials")
+                            .claim("custom-claim","custom-value");
                 }
             }
         };

@@ -5,6 +5,12 @@ spring:
   application:
     name: api-gateway
 
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8082/oauth2/jwks
   cloud:
     gateway:
       routes:
@@ -12,6 +18,21 @@ spring:
           uri: http://localhost:8081
           predicates:
             - Path=/ingest/**
+
+        - id: oauth-service-register
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/clients/**
+
+        - id: oauth-service-token
+          uri: http://localhost:8082
+          predicates:
+            - Path=/oauth2/**
+
+        # Add additional routes below as needed
+
+#      default-filters:
+#        - AddResponseHeader=X-Gateway, Routed-Through-API-Gateway
   datasource:
     url: jdbc:postgresql://localhost:5432/hie_platform
     username: hie_user
