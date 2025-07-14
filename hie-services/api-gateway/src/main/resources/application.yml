@@ -12,7 +12,6 @@ spring:
           uri: http://localhost:8081
           predicates:
             - Path=/ingest/**
-
   datasource:
     url: jdbc:postgresql://localhost:5432/hie_platform
     username: hie_user
@@ -22,6 +21,13 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
+
+jwt:
+  secret: ${JWT_SECRET:mySecretKeyForHIEPlatform2024}
+
+auth:
+  service:
+    url: http://localhost:8081
 
 #  security:
 #    user:

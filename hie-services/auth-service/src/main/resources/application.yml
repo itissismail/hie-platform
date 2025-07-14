@@ -1,16 +1,31 @@
 # auth-service/src/main/resources/application.yml
 server:
-  port: 8085
+  port: 8082
 
 spring:
   application:
     name: auth-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/hie_auth
+    url: jdbc:postgresql://localhost:5432/hie_platform
     username: hie_user
     password: hie_password
     driver-class-name: org.postgresql.Driver
 
+  security:
+    user:
+      name: admin
+      password: admin123
+
+#  profiles:
+#    active: dev
+#  autoconfigure:
+#    exclude: org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+#  security:
+#    user:
+#      name: admin
+#      password: admin123
+
+# Completely disable Spring Security (NOT recommended for production)
 
   jpa:
     hibernate:
@@ -31,3 +46,4 @@ logging:
   level:
     com.hie.auth: DEBUG
     org.springframework.security: DEBUG
+

@@ -15,3 +15,4 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
     Optional<Client> findByClientIdAndIsActiveTrue(String clientId);
     List<Client> findByIsActiveTrue();
 }
+
