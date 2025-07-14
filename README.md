@@ -8,6 +8,7 @@ A comprehensive health information exchange platform built with microservices ar
 The HIE Platform is designed as a distributed system with the following core components:
 
 - **API Gateway** - Central entry point for all external requests
+- **OAuth Service** - Spring based oAuth Service, which support client registration and client_credentials flow.
 - **Validation Service** - HL7 message validation and compliance checking
 - **Intake Service** - Message ingestion and initial processing
 - **Conversion Service** - Format transformation and standardization
