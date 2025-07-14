@@ -1,0 +1,33 @@
+# auth-service/src/main/resources/application.yml
+server:
+  port: 8085
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/hie_auth
+    username: hie_user
+    password: hie_password
+    driver-class-name: org.postgresql.Driver
+
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+jwt:
+  secret: ${JWT_SECRET:mySecretKeyForHIEPlatform2024}
+  expiration: 3600
+
+logging:
+  level:
+    com.hie.auth: DEBUG
+    org.springframework.security: DEBUG

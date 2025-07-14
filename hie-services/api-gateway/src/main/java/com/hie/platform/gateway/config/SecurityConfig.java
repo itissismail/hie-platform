@@ -17,6 +17,14 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @Configuration
 public class SecurityConfig {
 
+    /*
+    * Authentication Flow: **Used by default**
+    * Request arrives → Spring Security filter chain intercepts
+    * Check path → If /health, allow; otherwise require auth
+    * Basic Auth → Spring Security validates against UserDetailsService
+    * UserContextFilter → Adds user headers after Spring Security authentication
+    * Route → Forward to message router
+    * */
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         return http

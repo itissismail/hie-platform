@@ -13,6 +13,9 @@ import reactor.core.publisher.Mono;
 import java.util.Base64;
 
 // Custom Authentication Filter (Optional - for more control)
+/*
+    **NOT Used as by default Spring Security is used define in Security Config**
+ */
 @Component
 public class BasicAuthGatewayFilterFactory extends AbstractGatewayFilterFactory<BasicAuthGatewayFilterFactory.Config> {
 

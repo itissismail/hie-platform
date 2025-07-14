@@ -17,6 +17,7 @@
         <module>./hie-services/intake-service</module>
         <module>./hie-services/conversion-service</module>
         <module>./hie-services/storage-service</module>
+        <module>./hie-services/auth-service</module>
     </modules>
 
     <properties>
