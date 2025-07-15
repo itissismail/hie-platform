@@ -3,10 +3,10 @@ roles:
   - roleName: "fhir-user"
     resources:
       /R4/Patient: [ "GET" ]
-      /R4/Condition: [ "GET" ]
+      /R4/Condition: ["GET", "POST", "PUT"]
       /ingest: [ "POST" ]
 
   - roleName: "app-user"
     resources:
-      /R4/Patient: ["GET"]
-      /ingested: ["POST"]
+      /R4/Patient: ["GET", "POST", "PUT"]
+      /ingest: ["GET","POST"]

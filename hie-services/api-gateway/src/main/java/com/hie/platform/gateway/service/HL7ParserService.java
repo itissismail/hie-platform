@@ -9,9 +9,9 @@ import org.springframework.stereotype.Service;
 @Deprecated
 public class HL7ParserService {
 
-    private static final Logger logger = LoggerFactory.getLogger(HL7ParserService.class);
+  /*  private static final Logger logger = LoggerFactory.getLogger(HL7ParserService.class);
 
     public void parseMessage(HL7Message message){
 
-    }
+    }*/
 }

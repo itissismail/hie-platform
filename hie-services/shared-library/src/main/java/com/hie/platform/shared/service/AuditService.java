@@ -15,7 +15,7 @@ public class AuditService {
 
     public void logMessageEvent(UUID messageId, UUID correlationId, String serviceName,
                                 MessageStatus status, Long processingTime, String errorMessage) {
-        MessageAudit audit = new MessageAudit(messageId, correlationId, serviceName, status);
+        MessageAudit audit = new MessageAudit(messageId, correlationId, serviceName, status.toString());
         audit.setProcessingTimeMs(processingTime);
         audit.setErrorMessage(errorMessage);
 

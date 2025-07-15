@@ -1,12 +1,51 @@
 package com.hie.platform.shared.model;
 
 import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "message_audit")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class MessageAudit {
+
+    public MessageAudit(UUID messageId, UUID correlationId, String serviceName, String status) {
+        this.messageId = messageId;
+        this.correlationId = correlationId;
+        this.serviceName = serviceName;
+        this.status = status;
+    }
+
+    public MessageAudit(UUID messageId, UUID correlationId, String serviceName, String status, Long processingTimeMs, String errorMessage, LocalDateTime createdAt, String metadata, String stepName, Integer stepSequence, String requestPayload, String responsePayload) {
+        this.messageId = messageId;
+        this.correlationId = correlationId;
+        this.serviceName = serviceName;
+        this.status = status;
+        this.processingTimeMs = processingTimeMs;
+        this.errorMessage = errorMessage;
+        this.createdAt = createdAt;
+        this.metadata = metadata;
+        this.stepName = stepName;
+        this.stepSequence = stepSequence;
+        this.requestPayload = requestPayload;
+        this.responsePayload = responsePayload;
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,63 +57,42 @@ public class MessageAudit {
     @Column(name = "correlation_id", nullable = false)
     private UUID correlationId;
 
-    @Column(name = "service_name", nullable = false)
+    @Column(name = "service_name", nullable = false, length = 50)
     private String serviceName;
 
-    @Column(name = "status", nullable = false)
-    @Enumerated(EnumType.STRING)
-    private MessageStatus status;
+    @Column(name = "status", nullable = false, length = 20)
+    private String status;
 
     @Column(name = "processing_time_ms")
     private Long processingTimeMs;
 
-    @Column(name = "error_message")
+    @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    /*    @Column(name = "metadata", columnDefinition = "jsonb")
+        @Type(value = "io.hypersistence.utils.hibernate.type.json.JsonType")
+        private String metadata;*/
     @Column(name = "metadata", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String metadata;
 
-    // Constructors
-    public MessageAudit() {
+    @Column(name = "step_name", nullable = false, length = 100)
+    private String stepName;
+
+    @Column(name = "step_sequence")
+    private Integer stepSequence;
+
+    @Column(name = "request_payload", columnDefinition = "TEXT")
+    private String requestPayload;
+
+    @Column(name = "response_payload", columnDefinition = "TEXT")
+    private String responsePayload;
+
+    @PrePersist
+    protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
-
-    public MessageAudit(UUID messageId, UUID correlationId, String serviceName, MessageStatus status) {
-        this();
-        this.messageId = messageId;
-        this.correlationId = correlationId;
-        this.serviceName = serviceName;
-        this.status = status;
-    }
-
-    // Getters and setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public UUID getMessageId() { return messageId; }
-    public void setMessageId(UUID messageId) { this.messageId = messageId; }
-
-    public UUID getCorrelationId() { return correlationId; }
-    public void setCorrelationId(UUID correlationId) { this.correlationId = correlationId; }
-
-    public String getServiceName() { return serviceName; }
-    public void setServiceName(String serviceName) { this.serviceName = serviceName; }
-
-    public MessageStatus getStatus() { return status; }
-    public void setStatus(MessageStatus status) { this.status = status; }
-
-    public Long getProcessingTimeMs() { return processingTimeMs; }
-    public void setProcessingTimeMs(Long processingTimeMs) { this.processingTimeMs = processingTimeMs; }
-
-    public String getErrorMessage() { return errorMessage; }
-    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    public String getMetadata() { return metadata; }
-    public void setMetadata(String metadata) { this.metadata = metadata; }
 }

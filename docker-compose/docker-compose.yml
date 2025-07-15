@@ -47,10 +47,13 @@ services:
   # MinIO Object Storage
   minio:
     image: minio/minio:latest
+    #image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     container_name: hie-minio
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+      MINIO_API_ROOT_ACCESS: "on"
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -59,6 +62,39 @@ services:
     command: server /data --console-address ":9001"
     networks:
       - hie-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # MinIO Client (mc) - Interactive container
+  minio-client:
+    image: minio/mc:latest
+    container_name: hie-minio-client
+    depends_on:
+      - minio
+    networks:
+      - hie-network
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      mc alias set myminio http://hie-minio:9000 minioadmin minioadmin123;
+      echo 'MinIO Client configured successfully!';
+      echo 'Available commands:';
+      echo '  mc ls myminio                    - List buckets';
+      echo '  mc mb myminio/mybucket          - Create bucket';
+      echo '  mc admin user svcacct add myminio minioadmin - Create access key';
+      echo '  mc admin user svcacct list myminio minioadmin - List access keys';
+      echo '';
+      echo 'Container will stay running. Use: docker exec -it hie-minio-client sh';
+      tail -f /dev/null
+      "
+    volumes:
+      - minio_client_data:/root/.mc
 
   # Prometheus Monitoring
   prometheus:
@@ -113,6 +149,7 @@ volumes:
   minio_data:
   prometheus_data:
   grafana_data:
+  minio_client_data:
 
 networks:
   hie-network:

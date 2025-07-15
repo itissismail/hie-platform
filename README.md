@@ -285,6 +285,20 @@ docker stats
 - Verify service health: `docker-compose ps`  
 - Review configuration files  
 - Check network connectivity between services  
+- Access MinIO Client:
+  ```
+   docker exec -it hie-minio-client sh
+  ```
+- Common MinIO Client Commands:
+   ### Create Access Keys: ###
+   Create a new service account (access key)
+  ```
+   mc admin user svcacct add myminio minioadmin
+    ```
+    Create access key with specific permission
+  ```
+    mc admin user svcacct add myminio minioadmin --access-key MYACCESSKEY --secret-key MYSECRETKEY
+  ```
 
 ## 📚 Documentation
 

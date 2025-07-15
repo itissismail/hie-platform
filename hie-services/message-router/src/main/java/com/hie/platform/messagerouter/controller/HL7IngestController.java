@@ -1,6 +1,8 @@
 package com.hie.platform.messagerouter.controller;
 
 import com.hie.platform.messagerouter.service.IngestionServiceMock;
+import com.hie.platform.shared.audit.annotation.AuditStep;
+import com.hie.platform.shared.audit.context.AuditContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +24,7 @@ public class HL7IngestController {
     }
 
     @PostMapping
+    @AuditStep(serviceName = "message-router", stepName = "message-processing")
     public Mono<ResponseEntity<Map<String, Object>>> ingest(ServerHttpRequest request, @RequestBody Mono<String> hl7MessageMono) {
     /*    return hl7MessageMono.flatMap(msg -> {
             String correlationId = ingestionService.ingest(msg);
@@ -48,4 +51,19 @@ public class HL7IngestController {
         return Mono.just(ResponseEntity.ok(response));
     }
 
+    @PostMapping("/process")
+    public Mono<ResponseEntity<String>> processMessage(@RequestBody Mono<String> hl7MessageMono) {
+      /*  return Mono.deferContextual(ctx -> {
+            AuditContext auditContext = ctx.get(AuditContext.class);
+
+         *//*   return ingestionService.ingest(hl7MessageMono.toString())
+                    .doOnSuccess(result -> {
+                        // Log success with audit context via Logger
+                        *//**//*log.info("Message processed successfully - MessageId: {}",
+                                auditContext.getMessageId());*//**//*
+                    })
+                    .map(result -> ResponseEntity.ok(result));
+        });*/
+        return null;
+    }
 }

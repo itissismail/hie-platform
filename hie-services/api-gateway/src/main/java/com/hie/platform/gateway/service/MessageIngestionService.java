@@ -22,7 +22,7 @@ import java.util.UUID;
 @Deprecated
 public class MessageIngestionService {
 
-    private static final Logger logger = LoggerFactory.getLogger(MessageIngestionService.class);
+    /*private static final Logger logger = LoggerFactory.getLogger(MessageIngestionService.class);
 
     @Autowired
     private MessagePublisher messagePublisher;
@@ -76,5 +76,5 @@ public class MessageIngestionService {
     public String getMessageStatus(UUID correlationId) {
         // Implementation to get message status
         return "PROCESSING"; // Placeholder
-    }
+    }*/
 }
