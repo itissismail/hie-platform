@@ -1,8 +1,7 @@
 package com.hie.platform.messagerouter.service;
 
 import com.hie.platform.shared.audit.annotation.AuditStep;
-import com.hie.platform.shared.dto.MessageStateRequest;
-import com.hie.platform.shared.service.audit.AuditTrailService;
+import com.hie.platform.shared.audit.service.AuditTrailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

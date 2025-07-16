@@ -1,4 +1,4 @@
-package com.hie.platform.shared.model;
+package com.hie.platform.shared.audit.model;
 
 public enum MessageStatus {
     RECEIVED,

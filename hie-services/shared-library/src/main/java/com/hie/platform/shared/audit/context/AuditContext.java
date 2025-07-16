@@ -5,9 +5,15 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
+/**
+ * Author M.Ismail
+ * Class-level annotation for automatic audit logging
+ * Date 15-July-2025
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -24,6 +30,9 @@ public class AuditContext {
 
     private static final ThreadLocal<AuditContext> contextHolder = new ThreadLocal<>();
 
+    // Add reactor context support
+    public static final String REACTOR_CONTEXT_KEY = "AUDIT_CONTEXT";
+
     public static void setContext(AuditContext context) {
         contextHolder.set(context);
     }
@@ -34,6 +43,16 @@ public class AuditContext {
 
     public static void clear() {
         contextHolder.remove();
+    }
+
+    // Reactor context methods
+    public static Mono<AuditContext> getContextFromReactor() {
+        return Mono.deferContextual(ctx -> {
+            if (ctx.hasKey(REACTOR_CONTEXT_KEY)) {
+                return Mono.just(ctx.get(REACTOR_CONTEXT_KEY));
+            }
+            return Mono.justOrEmpty(getContext());
+        });
     }
 
     public static UUID getMessageId() {

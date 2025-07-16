@@ -6,17 +6,7 @@ import com.hie.platform.shared.model.MessageStatus;
 import com.hie.platform.shared.repository.MessageStateRepository;
 import com.hie.platform.shared.service.AuditService;
 import com.hie.platform.shared.service.MessagePublisher;*/
-import com.hie.platform.shared.dto.HL7Message;
-import com.hie.platform.shared.model.MessageState;
-import com.hie.platform.shared.model.MessageStatus;
-import com.hie.platform.shared.repository.MessageStateRepository;
-import com.hie.platform.shared.service.AuditService;
-import com.hie.platform.shared.service.MessagePublisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.util.UUID;
 
 @Service
 @Deprecated

@@ -1,11 +1,17 @@
-package com.hie.platform.shared.service.audit;
+package com.hie.platform.shared.audit.service;
 
-import com.hie.platform.shared.dto.AuditRequest;
-import com.hie.platform.shared.dto.MessageStateRequest;
+import com.hie.platform.shared.audit.dto.AuditRequest;
+import com.hie.platform.shared.audit.dto.MessageStateRequest;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
+
+/**
+ *  Author M.Ismail
+ *  Service interface for Audit operation
+ *  Date 15-July-2025
+ */
 public interface AuditTrailService {
 
     Mono<Void> createAuditEntry(AuditRequest auditRequest);

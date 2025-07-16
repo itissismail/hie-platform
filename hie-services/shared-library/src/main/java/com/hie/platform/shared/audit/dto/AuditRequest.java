@@ -1,9 +1,15 @@
-package com.hie.platform.shared.dto;
+package com.hie.platform.shared.audit.dto;
 
 import lombok.Builder;
 import lombok.Data;
 
 import java.util.UUID;
+
+/**
+ *  Author M.Ismail
+ *  DTO
+ *  Date 15-July-2025
+ */
 
 @Data
 @Builder

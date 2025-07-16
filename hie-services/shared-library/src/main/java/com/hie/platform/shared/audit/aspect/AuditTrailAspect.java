@@ -2,7 +2,7 @@ package com.hie.platform.shared.audit.aspect;
 
 
 import com.hie.platform.shared.audit.annotation.AuditStep;
-import com.hie.platform.shared.service.audit.AuditTrailService;
+import com.hie.platform.shared.audit.service.AuditTrailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -12,6 +12,12 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
+
+/**
+ *  Author M.Ismail
+ *  AOP aspect that intercepts @AuditStep methods
+ *  Date 15-July-2025
+ */
 
 @Aspect
 @Component

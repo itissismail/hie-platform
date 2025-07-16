@@ -12,6 +12,12 @@ import reactor.core.publisher.Mono;
 
 import java.util.UUID;
 
+/**
+ *  Author M.Ismail
+ *  WebFilter to extract and set audit context from HTTP headers
+ *  Date 15-July-2025
+ */
+
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
@@ -30,8 +36,8 @@ public class AuditContextFilter implements WebFilter {
         return extractAuditContext(exchange)
                 .flatMap(context -> {
                     AuditContext.setContext(context);
-                    log.debug("Audit context set for messageId: {}, correlationId: {}, service: {}",
-                            context.getMessageId(), context.getCorrelationId(), context.getServiceName());
+                    /*log.debug("Audit context set for messageId: {}, correlationId: {}, service: {}",
+                            context.getMessageId(), context.getCorrelationId(), context.getServiceName());*/
 
                     return chain.filter(exchange)
                             .contextWrite(ctx -> ctx.put(AuditContext.class, context));

@@ -1,6 +1,6 @@
-package com.hie.platform.shared.repository;
+package com.hie.platform.shared.audit.repository;
 
-import com.hie.platform.shared.model.MessageAudit;
+import com.hie.platform.shared.audit.model.MessageAudit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

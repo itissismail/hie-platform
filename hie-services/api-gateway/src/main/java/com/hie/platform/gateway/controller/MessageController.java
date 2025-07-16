@@ -2,15 +2,13 @@ package com.hie.platform.gateway.controller;
 
 import com.hie.platform.gateway.service.MessageIngestionService;
 
-import com.hie.platform.shared.dto.HL7Message;
+import com.hie.platform.shared.audit.dto.HL7Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/messages")

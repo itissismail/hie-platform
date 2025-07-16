@@ -1,9 +1,14 @@
-package com.hie.platform.shared.dto;
+package com.hie.platform.shared.audit.dto;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ *  Author M.Ismail
+ *  DTO
+ *  Date 15-July-2025
+ */
 public class HL7Message implements Serializable {
 
     private UUID messageId;

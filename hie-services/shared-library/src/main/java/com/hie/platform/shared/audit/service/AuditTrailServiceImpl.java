@@ -1,17 +1,16 @@
-package com.hie.platform.shared.service.audit;
+package com.hie.platform.shared.audit.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hie.platform.shared.dto.AuditRequest;
-import com.hie.platform.shared.dto.MessageStateRequest;
-import com.hie.platform.shared.model.AuditStatus;
-import com.hie.platform.shared.model.MessageAudit;
-import com.hie.platform.shared.model.MessageState;
-import com.hie.platform.shared.repository.MessageAuditRepository;
-import com.hie.platform.shared.repository.MessageStateRepository;
+import com.hie.platform.shared.audit.dto.AuditRequest;
+import com.hie.platform.shared.audit.dto.MessageStateRequest;
+import com.hie.platform.shared.audit.model.AuditStatus;
+import com.hie.platform.shared.audit.model.MessageAudit;
+import com.hie.platform.shared.audit.model.MessageState;
+import com.hie.platform.shared.audit.repository.MessageAuditRepository;
+import com.hie.platform.shared.audit.repository.MessageStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
@@ -23,6 +22,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ *  Author M.Ismail
+ *  Service interface for Audit operation
+ *  Date 15-July-2025
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j

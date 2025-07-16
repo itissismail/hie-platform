@@ -1,4 +1,4 @@
-package com.hie.platform.shared.model;
+package com.hie.platform.shared.audit.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -8,6 +8,12 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+/**
+ *  Author M.Ismail
+ *  Entity for message-level state tracking
+ *  Date 15-July-2025
+ */
 
 @Entity
 @Table(name = "message_state")

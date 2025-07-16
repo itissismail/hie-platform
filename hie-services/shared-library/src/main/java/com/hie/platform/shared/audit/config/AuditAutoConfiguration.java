@@ -11,11 +11,18 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+/**
+ *  Author M.Ismail
+ *  This is a Spring Boot auto-configuration class. It defines the default beans for auditing functionality (e.g., AuditTrailService)
+ *  and registers them only if missing.
+ *  Date 15-July-2025
+ */
+
 @Configuration
 @EnableAsync
 @EnableTransactionManagement
 @EntityScan(basePackages = "com.hie.platform.shared.model")
-@EnableJpaRepositories(basePackages = "com.hie.platform.shared.repository")
+@EnableJpaRepositories(basePackages = "com.hie.platform.shared.audit.repository")
 @ComponentScan(basePackages = "com.hie.platform.shared")
 //@ConditionalOnProperty(name = "audit.enabled", havingValue = "true", matchIfMissing = true)
 

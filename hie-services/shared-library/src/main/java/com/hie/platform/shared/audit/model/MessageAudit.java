@@ -1,4 +1,4 @@
-package com.hie.platform.shared.model;
+package com.hie.platform.shared.audit.model;
 
 import jakarta.persistence.*;
 
@@ -16,6 +16,12 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+/**
+ *  Author M.Ismail
+ *  Entity for step-level audit records
+ *  Date 15-July-2025
+ */
 
 @Entity
 @Table(name = "message_audit")

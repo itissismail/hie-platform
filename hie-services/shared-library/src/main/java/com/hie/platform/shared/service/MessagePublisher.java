@@ -1,6 +1,6 @@
 package com.hie.platform.shared.service;
 
-import com.hie.platform.shared.dto.HL7Message;
+import com.hie.platform.shared.audit.dto.HL7Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
