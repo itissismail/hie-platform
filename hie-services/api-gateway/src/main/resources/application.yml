@@ -22,23 +22,15 @@ spring:
               args:
                 service-name: "message-router-service"
 
-#        - id: oauth-service-register
-#          uri: http://localhost:8082
-#          predicates:
-#            - Path=/api/clients/**
-#          filters:
-#            - name: GatewayAuditFilter
-#              args:
-#                service-name: "oAuth-service"
 
         - id: oauth-service-token
           uri: http://localhost:8082
           predicates:
             - Path=/oauth2/**
-          filters:
-            - name: GatewayAuditFilter
-              args:
-                service-name: "oAuth-service"
+#          filters:
+#            - name: OAuthAuditGatewayFilter
+#              args:
+#                service-name: "oAuth-service"
 
         # Add additional routes below as needed
 

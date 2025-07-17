@@ -1,5 +1,6 @@
 package com.hie.platform.gateway.filter;
 
+import com.hie.platform.gateway.utils.AppConstant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
@@ -13,13 +14,7 @@ import java.util.UUID;
 @Slf4j
 public class GatewayAuditFilter extends AbstractGatewayFilterFactory<GatewayAuditFilter.Config> {
 
-    private static final String MESSAGE_ID_HEADER = "X-Message-ID";
-    private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
-    private static final String SERVICE_NAME_HEADER = "X-Service-Name";
-    private static final String SOURCE_ORGANIZATION_HEADER = "X-Source-Organization";
-    private static final String MESSAGE_TYPE_HEADER = "X-Message-Type";
-    private static final String PATIENT_ID_HEADER = "X-Patient-ID";
-    private static final String GLOBAL_PATIENT_ID_HEADER = "X-Global-Patient-ID";
+
 
     public GatewayAuditFilter() {
         super(Config.class);
@@ -49,20 +44,20 @@ public class GatewayAuditFilter extends AbstractGatewayFilterFactory<GatewayAudi
             ServerHttpRequest.Builder requestBuilder = exchange.getRequest().mutate();
 
             // Generate or propagate message ID
-            String messageId = exchange.getRequest().getHeaders().getFirst(MESSAGE_ID_HEADER);
+            String messageId = exchange.getRequest().getHeaders().getFirst(AppConstant.MESSAGE_ID_HEADER);
             if (messageId == null) {
                 messageId = UUID.randomUUID().toString();
-                requestBuilder.header(MESSAGE_ID_HEADER, messageId);
+                requestBuilder.header(AppConstant.MESSAGE_ID_HEADER, messageId);
                 log.debug("Generated new message ID: {}", messageId);
             } else {
                 log.debug("Propagating existing message ID: {}", messageId);
             }
 
             // Generate or propagate correlation ID
-            String correlationId = exchange.getRequest().getHeaders().getFirst(CORRELATION_ID_HEADER);
+            String correlationId = exchange.getRequest().getHeaders().getFirst(AppConstant.CORRELATION_ID_HEADER);
             if (correlationId == null) {
                 correlationId = UUID.randomUUID().toString();
-                requestBuilder.header(CORRELATION_ID_HEADER, correlationId);
+                requestBuilder.header(AppConstant.CORRELATION_ID_HEADER, correlationId);
                 log.debug("Generated new correlation ID: {}", correlationId);
             } else {
                 log.debug("Propagating existing correlation ID: {}", correlationId);
@@ -70,15 +65,15 @@ public class GatewayAuditFilter extends AbstractGatewayFilterFactory<GatewayAudi
 
             // Add service name if configured
             if (config.getServiceName() != null) {
-                requestBuilder.header(SERVICE_NAME_HEADER, config.getServiceName());
+                requestBuilder.header(AppConstant.SERVICE_NAME_HEADER, config.getServiceName());
                 log.debug("Added service name header: {}", config.getServiceName());
             }
 
             // Propagate audit headers if they exist
-            propagateHeaderIfExists(exchange, requestBuilder, SOURCE_ORGANIZATION_HEADER);
-            propagateHeaderIfExists(exchange, requestBuilder, MESSAGE_TYPE_HEADER);
-            propagateHeaderIfExists(exchange, requestBuilder, PATIENT_ID_HEADER);
-            propagateHeaderIfExists(exchange, requestBuilder, GLOBAL_PATIENT_ID_HEADER);
+            propagateHeaderIfExists(exchange, requestBuilder, AppConstant.SOURCE_ORGANIZATION_HEADER);
+            propagateHeaderIfExists(exchange, requestBuilder, AppConstant.MESSAGE_TYPE_HEADER);
+            propagateHeaderIfExists(exchange, requestBuilder, AppConstant.PATIENT_ID_HEADER);
+            propagateHeaderIfExists(exchange, requestBuilder, AppConstant.GLOBAL_PATIENT_ID_HEADER);
 
             log.info("Gateway audit filter applied - MessageId: {}, CorrelationId: {}, Service: {}",
                     messageId, correlationId, config.getServiceName());
@@ -101,6 +96,12 @@ public class GatewayAuditFilter extends AbstractGatewayFilterFactory<GatewayAudi
     public static class Config {
         private String serviceName;
 
+        public Config(){
+
+        }
+        public Config(String serviceName){
+            this.serviceName=serviceName;
+        }
         public String getServiceName() {
             return serviceName;
         }
