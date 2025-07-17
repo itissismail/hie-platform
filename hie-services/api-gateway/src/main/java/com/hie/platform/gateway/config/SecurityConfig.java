@@ -22,6 +22,7 @@ import org.springframework.security.web.server.authorization.AuthorizationContex
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 
 @EnableWebFluxSecurity
 @Configuration
@@ -51,10 +52,11 @@ public class SecurityConfig {
         return http
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers("/health").permitAll()
+                        .pathMatchers("/actuator/**").permitAll()
                         .pathMatchers("/api/clients/**", "/oauth2/**").permitAll()
                         //.pathMatchers("/ingest/**").hasAuthority("SCOPE_ingest") // or just `.authenticated()`
                         //.pathMatchers("/ingest/**").access(this::authorizeIngest)
-                        .pathMatchers("/ingest/**").access(this::authorizeViaAcl)
+                        .pathMatchers("/intake/**").access(this::authorizeViaAcl)
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults())) // ✅ Enable JWT
@@ -96,7 +98,7 @@ public class SecurityConfig {
     @Autowired
     private AclLoader aclLoader;
 
-    private Mono<AuthorizationDecision> authorizeViaAcl(Mono<Authentication> authMono, AuthorizationContext context) {
+    /*private Mono<AuthorizationDecision> authorizeViaAcl(Mono<Authentication> authMono, AuthorizationContext context) {
         String path = context.getExchange().getRequest().getPath().value();
         //String method = context.getExchange().getRequest().getMethodValue();
         HttpMethod httpMethod = context.getExchange().getRequest().getMethod();
@@ -110,5 +112,47 @@ public class SecurityConfig {
             }
             return new AuthorizationDecision(false);
         });
+    }*/
+    private Mono<AuthorizationDecision> authorizeViaAcl(Mono<Authentication> authMono, AuthorizationContext context) {
+        String path = context.getExchange().getRequest().getPath().value();
+        HttpMethod httpMethod = context.getExchange().getRequest().getMethod();
+        String method = (httpMethod != null) ? httpMethod.name() : "UNKNOWN";
+
+        return authMono.map(auth -> {
+            if (auth instanceof JwtAuthenticationToken jwt) {
+                List<String> roles = jwt.getToken().getClaimAsStringList("roles");
+                boolean allowed = roles.stream().anyMatch(role -> isAllowedWithWildcard(role, path, method));
+                return new AuthorizationDecision(allowed);
+            }
+            return new AuthorizationDecision(false);
+        });
+    }
+
+    private boolean isAllowedWithWildcard(String role, String requestPath, String method) {
+        // First check for exact path match
+        if (aclLoader.isAllowed(role, requestPath, method)) {
+            return true;
+        }
+
+        // Get all resources for this role
+        Map<String, List<String>> resources = aclLoader.getResourcesForRole(role);
+
+        // Check for wildcard matches
+        for (Map.Entry<String, List<String>> entry : resources.entrySet()) {
+            String resourcePath = entry.getKey();
+            List<String> allowedMethods = entry.getValue();
+
+            // Check if the resource path ends with /**
+            if (resourcePath.endsWith("/**")) {
+                String basePath = resourcePath.substring(0, resourcePath.length() - 3); // Remove /**
+
+                // Check if request path starts with the base path
+                if (requestPath.startsWith(basePath) && allowedMethods.contains(method)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

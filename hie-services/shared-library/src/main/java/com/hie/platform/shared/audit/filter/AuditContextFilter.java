@@ -36,8 +36,7 @@ public class AuditContextFilter implements WebFilter {
         return extractAuditContext(exchange)
                 .flatMap(context -> {
                     AuditContext.setContext(context);
-                    /*log.debug("Audit context set for messageId: {}, correlationId: {}, service: {}",
-                            context.getMessageId(), context.getCorrelationId(), context.getServiceName());*/
+                    log.debug("Audit context set");
 
                     return chain.filter(exchange)
                             .contextWrite(ctx -> ctx.put(AuditContext.class, context));

@@ -47,6 +47,13 @@
             <version>8.5.7</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.30</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- PostgreSQL -->
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -72,7 +79,6 @@
         <dependency>
             <groupId>com.hie.platform</groupId>
             <artifactId>shared-library</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
         </dependency>
 
         <!-- Monitoring and Tracing -->

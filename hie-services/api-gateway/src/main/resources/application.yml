@@ -5,7 +5,6 @@ spring:
   application:
     name: api-gateway
 
-
   security:
     oauth2:
       resourceserver:
@@ -17,17 +16,29 @@ spring:
         - id: message-router-ingest
           uri: http://localhost:8081
           predicates:
-            - Path=/ingest/**
+            - Path=/intake/**
+          filters:
+            - name: GatewayAuditFilter
+              args:
+                service-name: "message-router-service"
 
-        - id: oauth-service-register
-          uri: http://localhost:8082
-          predicates:
-            - Path=/api/clients/**
+#        - id: oauth-service-register
+#          uri: http://localhost:8082
+#          predicates:
+#            - Path=/api/clients/**
+#          filters:
+#            - name: GatewayAuditFilter
+#              args:
+#                service-name: "oAuth-service"
 
         - id: oauth-service-token
           uri: http://localhost:8082
           predicates:
             - Path=/oauth2/**
+          filters:
+            - name: GatewayAuditFilter
+              args:
+                service-name: "oAuth-service"
 
         # Add additional routes below as needed
 
@@ -48,7 +59,7 @@ jwt:
 
 auth:
   service:
-    url: http://localhost:8081
+    url: http://localhost:8082
 
 #  security:
 #    user:
@@ -60,10 +71,27 @@ hie:
     database:
       enabled: false
 
+# Enable debug logging
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
     org.springframework.security: DEBUG
+    com.hie.platform.gateway.filter: DEBUG
+
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
 #  cloud:
 #    gateway:

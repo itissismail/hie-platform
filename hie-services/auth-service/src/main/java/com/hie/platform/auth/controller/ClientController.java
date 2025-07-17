@@ -17,7 +17,7 @@ import java.util.List;
  * Provides endpoints for registering new clients and retrieving client information.
  */
 @RestController
-@RequestMapping("/api/clients")
+@RequestMapping("/oauth2")
 public class ClientController {
 
     private final ClientService clientService;
