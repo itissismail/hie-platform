@@ -6,6 +6,8 @@ import com.hie.platform.shared.audit.service.AuditTrailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.UUID;
 
@@ -27,5 +29,12 @@ public class IngestionServiceMock {
 
         log.debug("Generated correlation ID: {}", correlationId);
         return correlationId;
+    }
+
+    public Mono<String> ingestReactive(String hl7Message) {
+        return Mono.fromCallable(() -> {
+            log.debug("Lambda inside fromCallable() is executing - about to call ingest()");
+            return ingest(hl7Message);
+        }).subscribeOn(Schedulers.boundedElastic()); // Run on separate thread pool
     }
 }

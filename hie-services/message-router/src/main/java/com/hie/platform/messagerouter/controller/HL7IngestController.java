@@ -11,7 +11,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
+import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,26 +39,47 @@ public class HL7IngestController {
         String userRole = request.getHeaders().getFirst("X-User-Role");
 
         // Properly handle the reactive Mono<String>
-        return hl7MessageMono.flatMap(hl7Message -> {
-            log.debug("Processing HL7 message of length: {}", hl7Message != null ? hl7Message.length() : 0);
+        return hl7MessageMono
+                .flatMap(hl7Message -> {
+                    log.debug("HL7 message received, length: {}", hl7Message.length());
+                    log.debug("Creating Mono.fromCallable to wrap synchronous ingest() call");
 
-            // Now properly pass the actual message content
-            String correlationId = ingestionService.ingest(hl7Message);
-            //String correlationId = UUID.randomUUID().toString();
+                    return Mono.fromCallable(() -> {
+                                return ingestionService.ingestReactive(hl7Message);
+                               // return result; // This becomes the value emitted by the Mono
+                            })
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .doOnSubscribe(subscription -> {
+                                log.debug("Mono subscribed - execution will start on boundedElastic scheduler");
+                                log.debug("Subscription thread: {}", Thread.currentThread().getName());
+                            })
+                            .doOnNext(correlationId -> {
+                                log.debug("Mono emitted value: {}", correlationId);
+                                log.debug("doOnNext executing on thread: {}", Thread.currentThread().getName());
+                            })
+                            .doOnError(error -> {
+                                log.error("Error occurred in Mono execution: {}", error.getMessage(), error);
+                                log.debug("Error thread: {}", Thread.currentThread().getName());
+                            })
+                            .doOnTerminate(() -> {
+                                log.debug("Mono execution terminated");
+                                log.debug("Termination thread: {}", Thread.currentThread().getName());
+                            })
+                            .map(correlationId -> {
+                                log.debug("Mapping result to ResponseEntity, correlationId: {}", correlationId);
 
-            Map<String, Object> response = Map.of(
-                    "message", "Message accepted for processing",
-                    "authenticatedUser", userId != null ? userId : "anonymous",
-                    "userRole", userRole != null ? userRole : "none",
-                    "correlationId", correlationId,
-                    "timestamp", System.currentTimeMillis()
-            );
+                                Map<String, Object> response = new HashMap<>();
+                                response.put("status", "success");
+                                response.put("correlationId", correlationId);
+                                response.put("message", "HL7 message processed successfully");
 
-            log.debug("Returning response with correlation ID: {}", correlationId);
-            return Mono.just(ResponseEntity.ok(response));
-        }).doOnError(error -> {
-            log.error("Error processing ingest request", error);
-        });
+                                log.debug("Response map created: {}", response);
+                                return ResponseEntity.ok(response);
+                            });
+                })
+                .doOnError(error -> {
+                    log.error("Error in outer flatMap: {}", error.getMessage(), error);
+                });
     }
 
     @PostMapping("/process")
