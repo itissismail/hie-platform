@@ -12,6 +12,7 @@ import java.time.Duration;
  */
 @ConfigurationProperties(prefix = "audit")
 @Data
+@Deprecated
 public class AuditProperties {
     private boolean enabled = true;
     private boolean async = true;

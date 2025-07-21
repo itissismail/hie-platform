@@ -7,7 +7,7 @@ import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFac
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
+//import javax.annotation.PostConstruct;
 import java.util.UUID;
 
 @Component
@@ -20,10 +20,10 @@ public class GatewayAuditFilter extends AbstractGatewayFilterFactory<GatewayAudi
         super(Config.class);
     }
 
-    @PostConstruct
+   /* @PostConstruct
     public void init() {
         log.info("GatewayAuditFilter initialized and registered");
-    }
+    }*/
 
     @Override
     public GatewayFilter apply(Config config) {

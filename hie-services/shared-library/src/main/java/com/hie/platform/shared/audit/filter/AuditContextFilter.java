@@ -2,6 +2,7 @@ package com.hie.platform.shared.audit.filter;
 
 import com.hie.platform.shared.audit.context.AuditContext;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
+@Deprecated
 public class AuditContextFilter implements WebFilter {
 
     private static final String MESSAGE_ID_HEADER = "X-Message-ID";

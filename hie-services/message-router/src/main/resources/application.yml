@@ -19,172 +19,81 @@ spring:
       ddl-auto: validate
     show-sql: false
 
-hie:
-  audit:
-    database:
-      enabled: false
-#  cloud:
-#    gateway:
-#      discovery:
-#        locator:
-#          enabled: true
-#          lower-case-service-id: true
-#      routes:
-#        - id: message-router
-#          uri: lb://message-router-service
-#          predicates:
-#            - Path=/api/v1/messages/**
-#          filters:
-#            - name: RequestRateLimiter
-#              args:
-#                redis-rate-limiter.replenish-rate: 10
-#                redis-rate-limiter.burst-capacity: 20
-#                key-resolver: "#{@userKeyResolver}"
-#        - id: health-check
-#          uri: lb://message-router-service
-#          predicates:
-#            - Path=/health/**
-#          filters:
-#            - StripPrefix=1
-#
-#      default-filters:
-#        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
-#        - AddResponseHeader=X-Response-Default-Foo, Default-Bar
-#        - name: Retry
-#          args:
-#            retries: 3
-#            statuses: BAD_GATEWAY,GATEWAY_TIMEOUT
-#            methods: GET,POST
-#        - name: CircuitBreaker
-#          args:
-#            name: default
-#            fallbackUri: forward:/fallback
-#
-#      httpclient:
-#        connect-timeout: 5000
-#        response-timeout: 10000
-#        pool:
-#          max-idle-time: 30000
-#          max-life-time: 30000
-#
-#  # Redis Configuration
-#  redis:
-#    host: localhost
-#    port: 6379
-#    password: redis_password
-#    database: 0
-#    timeout: 2000
-#    lettuce:
-#      pool:
-#        max-active: 8
-#        max-idle: 8
-#        min-idle: 0
-#        max-wait: -1
-#
-#  # Security Configuration
-#  security:
-#    oauth2:
-#      resourceserver:
-#        jwt:
-#          jwk-set-uri: ${OAUTH2_JWK_SET_URI:http://localhost:8080/auth/realms/hie/protocol/openid-connect/certs}
-#          issuer-uri: ${OAUTH2_ISSUER_URI:http://localhost:8080/auth/realms/hie}
-#
-## Management and Monitoring
+  # R2DBC Configuration for Reactive Database Access
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/hie_platform
+    username: ${DB_USERNAME:hie_user}
+    password: ${DB_PASSWORD:hie_password}
+    pool:
+      enabled: true
+      initial-size: 10
+      max-size: 20
+      max-idle-time: 30m
+      validation-query: SELECT 1
+
+# MinIO Configuration
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: ${MINIO_BUCKET_NAME:hl7-messages}
+  region: ${MINIO_REGION:us-east-1}
+  secure: ${MINIO_SECURE:false}
+
+# RabbitMQ Configuration
+rabbitmq:
+  host: ${RABBITMQ_HOST:localhost}
+  port: ${RABBITMQ_PORT:5672}
+  username: ${RABBITMQ_USERNAME:guest}
+  password: ${RABBITMQ_PASSWORD:guest}
+  virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
+  exchange-name: ${RABBITMQ_EXCHANGE_NAME:hl7-processing-exchange}
+  service-name: ${RABBITMQ_SERVICE_NAME:message-router-service}
+
+  queues:
+    hl7-processing: ${RABBITMQ_QUEUE_PROCESSING:hl7-processing-queue}
+    hl7-validation: ${RABBITMQ_QUEUE_VALIDATION:hl7-validation-queue}
+    hl7-conversion: ${RABBITMQ_QUEUE_CONVERSION:hl7-conversion-queue}
+    hl7-storage: ${RABBITMQ_QUEUE_STORAGE:hl7-storage-queue}
+    dead-letter: ${RABBITMQ_QUEUE_DEAD_LETTER:hl7-dead-letter-queue}
+
+  routing-keys:
+    hl7-processing: ${RABBITMQ_ROUTING_PROCESSING:hl7.processing}
+    hl7-validation: ${RABBITMQ_ROUTING_VALIDATION:hl7.validation}
+    hl7-conversion: ${RABBITMQ_ROUTING_CONVERSION:hl7.conversion}
+    hl7-storage: ${RABBITMQ_ROUTING_STORAGE:hl7.storage}
+
+  message-settings:
+    message-ttl: ${RABBITMQ_MESSAGE_TTL:3600000} # 1 hour
+    max-retries: ${RABBITMQ_MAX_RETRIES:3}
+    durable: ${RABBITMQ_DURABLE:true}
+    persistent: ${RABBITMQ_PERSISTENT:true}
+
+# Logging Configuration
+logging:
+  level:
+    com.hie.platform: DEBUG
+    org.springframework.amqp: DEBUG
+    io.minio: DEBUG
+    org.springframework.data.r2dbc: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] - %msg%n"
+
+# Management and Monitoring
 #management:
 #  endpoints:
 #    web:
 #      exposure:
-#        include: health,info,metrics,prometheus,gateway
+#        include: prometheus, health, info
 #  endpoint:
-#    health:
-#      show-details: when-authorized
-#      show-components: when-authorized
-#    metrics:
-#      enabled: true
 #    prometheus:
 #      enabled: true
 #  metrics:
 #    export:
 #      prometheus:
 #        enabled: true
-#    distribution:
-#      percentiles-histogram:
-#        http.server.requests: true
-#      percentiles:
-#        http.server.requests: 0.5,0.95,0.99
-#      sla:
-#        http.server.requests: 100ms,500ms,1000ms,2000ms,5000ms
-#    tags:
-#      application: ${spring.application.name}
-#      service: api-gateway
-#
-## Logging Configuration
-#logging:
-#  level:
-#    com.hie.platform: DEBUG
-#    org.springframework.cloud.gateway: DEBUG
-#    org.springframework.web.reactive: DEBUG
-#    org.springframework.security: DEBUG
-#  pattern:
-#    console: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
-#    file: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
-#  file:
-#    name: logs/api-gateway.log
-#    max-size: 10MB
-#    max-history: 30
-#
-## Resilience4j Configuration
-#resilience4j:
-#  circuitbreaker:
-#    instances:
-#      default:
-#        register-health-indicator: true
-#        failure-rate-threshold: 50
-#        minimum-number-of-calls: 5
-#        automatic-transition-from-open-to-half-open-enabled: true
-#        wait-duration-in-open-state: 5s
-#        permitted-number-of-calls-in-half-open-state: 3
-#        sliding-window-size: 10
-#        sliding-window-type: COUNT_BASED
-#
-#  retry:
-#    instances:
-#      default:
-#        max-attempts: 3
-#        wait-duration: 1s
-#        retry-exceptions:
-#          - java.io.IOException
-#          - java.util.concurrent.TimeoutException
-#        ignore-exceptions:
-#          - java.lang.IllegalArgumentException
-#
-## Custom Configuration
-#hie:
-#  gateway:
-#    cors:
-#      allowed-origins:
-#        - "http://localhost:3000"
-#        - "https://hie-frontend.com"
-#      allowed-methods:
-#        - GET
-#        - POST
-#        - PUT
-#        - DELETE
-#        - OPTIONS
-#      allowed-headers:
-#        - "*"
-#      allow-credentials: true
-#      max-age: 3600
-#
-#    rate-limit:
-#      enabled: true
-#      default-requests-per-second: 10
-#      default-burst-capacity: 20
-#
-#    tracing:
-#      enabled: true
-#      jaeger:
-#        endpoint: http://localhost:14268/api/traces
-#        service-name: api-gateway
-#        sampler-type: const
-#        sampler-param: 1
+
+hie:
+  audit:
+    database:
+      enabled: false

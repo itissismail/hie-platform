@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
 
 /*@SpringBootApplication(exclude = {
         DataSourceAutoConfiguration.class,
@@ -14,7 +15,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 })*/
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.hie.platform.gateway", "com.hie.platform.shared"})
-@EnableJpaRepositories(basePackages = "com.hie.platform.shared.repository")
+//@EnableJpaRepositories(basePackages = "com.hie.platform.shared.audit.repository")
+@EnableR2dbcRepositories(basePackages = "com.hie.platform.shared.audit.repository")
 @EntityScan(basePackages = "com.hie.platform.shared")
 //        ,excludeFilters = @ComponentScan.Filter(
 //                type = FilterType.ASSIGNABLE_TYPE,

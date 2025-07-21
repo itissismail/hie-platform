@@ -18,6 +18,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Deprecated
 public class AuditContext {
     private UUID messageId;
     private UUID correlationId;
@@ -26,7 +27,7 @@ public class AuditContext {
     private String messageType;
     private String patientId;
     private String globalPatientId;
-    private long startTime;
+    private Long startTime;
 
     private static final ThreadLocal<AuditContext> contextHolder = new ThreadLocal<>();
 

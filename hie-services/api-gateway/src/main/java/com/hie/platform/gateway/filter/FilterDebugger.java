@@ -25,7 +25,7 @@ public class FilterDebugger implements ApplicationListener<ApplicationReadyEvent
     public void onApplicationEvent(ApplicationReadyEvent event) {
         log.debug("Available Gateway Filters:");
         filterFactories.forEach(factory -> {
-            log.debug("- " + factory.getClass().getSimpleName());
+            //log.debug("- " + factory.getClass().getSimpleName());
         });
     }
 }

@@ -12,19 +12,16 @@ import com.hie.platform.shared.audit.repository.MessageStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
  *  Author M.Ismail
- *  Service interface for Audit operation
+ *  Reactive Service implementation for Audit operations
  *  Date 15-July-2025
  */
 @Service
@@ -38,151 +35,228 @@ public class AuditTrailServiceImpl implements AuditTrailService {
 
     @Override
     public Mono<Void> createAuditEntry(AuditRequest auditRequest) {
-        return Mono.fromCallable(() -> {
-                    Integer nextSequence = Optional.ofNullable(
-                            messageAuditRepository.findMaxStepSequence(auditRequest.getMessageId())
-                    ).map(seq -> seq + 1).orElse(1);
+        // Add null checks for required fields
+        if (auditRequest == null || auditRequest.getMessageId() == null) {
+            log.warn("Invalid audit request: auditRequest or messageId is null");
+            return Mono.empty();
+        }
 
-                    MessageAudit audit = MessageAudit.builder()
-                            .messageId(auditRequest.getMessageId())
-                            .correlationId(auditRequest.getCorrelationId())
-                            .serviceName(auditRequest.getServiceName())
-                            .status(auditRequest.getStatus())
-                            .stepName(auditRequest.getStepName())
-                            .stepSequence(nextSequence)
-                            .requestPayload(auditRequest.getRequestPayload())
-                            .responsePayload(auditRequest.getResponsePayload())
-                            .errorMessage(auditRequest.getErrorMessage())
-                            .metadata(auditRequest.getMetadata())
-                            .processingTimeMs(auditRequest.getProcessingTimeMs())
-                            .build();
+        return messageAuditRepository.findMaxStepSequence(auditRequest.getMessageId())
+                .map(maxSeq -> maxSeq + 1)
+                .switchIfEmpty(Mono.just(1)) // Use switchIfEmpty instead of defaultIfEmpty for better null handling
+                .flatMap(nextSequence -> {
+                    try {
+                        MessageAudit audit = MessageAudit.builder()
+                                .messageId(auditRequest.getMessageId())
+                                .correlationId(auditRequest.getCorrelationId())
+                                .serviceName(auditRequest.getServiceName())
+                                .status(auditRequest.getStatus())
+                                .stepName(auditRequest.getStepName())
+                                .stepSequence(nextSequence)
+                                .requestPayload(auditRequest.getRequestPayload())
+                                .responsePayload(auditRequest.getResponsePayload())
+                                .errorMessage(auditRequest.getErrorMessage())
+                                .metadata(auditRequest.getMetadata())
+                                .processingTimeMs(auditRequest.getProcessingTimeMs())
+                                .createdAt(LocalDateTime.now())
+                                .build();
 
-                    messageAuditRepository.save(audit);
-                    return null;
-                })
-                .subscribeOn(Schedulers.boundedElastic())
-                .doOnError(error -> log.error("Error creating audit entry for messageId: {}", auditRequest.getMessageId(), error))
-                .onErrorResume(error -> Mono.empty())
-                .then();
-    }
-
-    @Override
-    @Transactional
-    public Mono<Void> createMessageState(MessageStateRequest messageStateRequest) {
-        return Mono.fromCallable(() -> {
-                    MessageState messageState = MessageState.builder()
-                            .messageId(messageStateRequest.getMessageId())
-                            .currentStatus(messageStateRequest.getCurrentStatus())
-                            .sourceOrganization(messageStateRequest.getSourceOrganization())
-                            .messageType(messageStateRequest.getMessageType())
-                            .patientId(messageStateRequest.getPatientId())
-                            .globalPatientId(messageStateRequest.getGlobalPatientId())
-                            .s3Location(messageStateRequest.getS3Location())
-                            .lastProcessedBy(messageStateRequest.getLastProcessedBy())
-                            .totalProcessingTimeMs(messageStateRequest.getAdditionalProcessingTime() != null ?
-                                    messageStateRequest.getAdditionalProcessingTime() : 0L)
-                            .build();
-
-                    messageStateRepository.save(messageState);
-                    return null;
-                })
-                .subscribeOn(Schedulers.boundedElastic())
-                .doOnError(error -> log.error("Error creating message state for messageId: {}", messageStateRequest.getMessageId(), error))
-                .onErrorResume(error -> Mono.empty())
-                .then();
-    }
-
-    @Override
-    @Transactional
-    public Mono<Void> updateMessageState(MessageStateRequest messageStateRequest) {
-        return Mono.fromCallable(() -> {
-                    messageStateRepository.updateMessageStatus(
-                            messageStateRequest.getMessageId(),
-                            messageStateRequest.getCurrentStatus(),
-                            messageStateRequest.getLastProcessedBy(),
-                            messageStateRequest.getAdditionalProcessingTime() != null ?
-                                    messageStateRequest.getAdditionalProcessingTime() : 0L
-                    );
-
-                    // Update S3 location if provided
-                    if (messageStateRequest.getS3Location() != null) {
-                        Optional<MessageState> existingState = messageStateRepository.findByMessageId(messageStateRequest.getMessageId());
-                        if (existingState.isPresent()) {
-                            MessageState state = existingState.get();
-                            state.setS3Location(messageStateRequest.getS3Location());
-                            messageStateRepository.save(state);
-                        }
+                        return messageAuditRepository.save(audit);
+                    } catch (Exception e) {
+                        log.error("Error creating audit entity for messageId: {}", auditRequest.getMessageId(), e);
+                        return Mono.error(e);
                     }
-
-                    return null;
                 })
-                .subscribeOn(Schedulers.boundedElastic())
-                .doOnError(error -> log.error("Error updating message state for messageId: {}", messageStateRequest.getMessageId(), error))
-                .onErrorResume(error -> Mono.empty())
+                .doOnSuccess(saved -> log.debug("Created audit entry for messageId: {}, stepName: {}",
+                        auditRequest.getMessageId(), auditRequest.getStepName()))
+                .doOnError(error -> log.error("Error creating audit entry for messageId: {}",
+                        auditRequest.getMessageId(), error))
+                .onErrorResume(error -> {
+                    log.warn("Audit entry creation failed, continuing without audit for messageId: {}",
+                            auditRequest.getMessageId());
+                    return Mono.empty();
+                })
+                .then();
+    }
+
+    @Override
+    public Mono<Void> createMessageState(MessageStateRequest messageStateRequest) {
+        if (messageStateRequest == null || messageStateRequest.getMessageId() == null) {
+            log.warn("Invalid message state request: request or messageId is null");
+            return Mono.empty();
+        }
+
+        try {
+            MessageState messageState = MessageState.builder()
+                    .messageId(messageStateRequest.getMessageId())
+                    .currentStatus(messageStateRequest.getCurrentStatus())
+                    .sourceOrganization(messageStateRequest.getSourceOrganization())
+                    .messageType(messageStateRequest.getMessageType())
+                    .patientId(messageStateRequest.getPatientId())
+                    .globalPatientId(messageStateRequest.getGlobalPatientId())
+                    .s3Location(messageStateRequest.getS3Location())
+                    .lastProcessedBy(messageStateRequest.getLastProcessedBy())
+                    .totalProcessingTimeMs(messageStateRequest.getAdditionalProcessingTime() != null ?
+                            messageStateRequest.getAdditionalProcessingTime() : 0L)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            return messageStateRepository.save(messageState)
+                    .doOnSuccess(saved -> log.debug("Created message state for messageId: {}",
+                            messageStateRequest.getMessageId()))
+                    .doOnError(error -> log.error("Error creating message state for messageId: {}",
+                            messageStateRequest.getMessageId(), error))
+                    .onErrorResume(error -> {
+                        log.warn("Message state creation failed, continuing without state tracking for messageId: {}",
+                                messageStateRequest.getMessageId());
+                        return Mono.empty();
+                    })
+                    .then();
+        } catch (Exception e) {
+            log.error("Error building message state for messageId: {}", messageStateRequest.getMessageId(), e);
+            return Mono.empty();
+        }
+    }
+
+    @Override
+    public Mono<Void> updateMessageState(MessageStateRequest messageStateRequest) {
+        if (messageStateRequest == null || messageStateRequest.getMessageId() == null) {
+            log.warn("Invalid message state update request: request or messageId is null");
+            return Mono.empty();
+        }
+
+        Long additionalTime = messageStateRequest.getAdditionalProcessingTime() != null ?
+                messageStateRequest.getAdditionalProcessingTime() : 0L;
+
+        Mono<Integer> updateStatus = messageStateRepository.updateMessageStatus(
+                messageStateRequest.getMessageId(),
+                messageStateRequest.getCurrentStatus(),
+                messageStateRequest.getLastProcessedBy(),
+                additionalTime
+        );
+
+        Mono<Void> updateS3Location = Mono.empty();
+        if (messageStateRequest.getS3Location() != null) {
+            updateS3Location = messageStateRepository.findByMessageId(messageStateRequest.getMessageId())
+                    .flatMap(existingState -> {
+                        existingState.setS3Location(messageStateRequest.getS3Location());
+                        existingState.setUpdatedAt(LocalDateTime.now());
+                        return messageStateRepository.save(existingState);
+                    })
+                    .then();
+        }
+
+        return updateStatus
+                .then(updateS3Location)
+                .doOnSuccess(unused -> log.debug("Updated message state for messageId: {}",
+                        messageStateRequest.getMessageId()))
+                .doOnError(error -> log.error("Error updating message state for messageId: {}",
+                        messageStateRequest.getMessageId(), error))
+                .onErrorResume(error -> {
+                    log.warn("Message state update failed for messageId: {}",
+                            messageStateRequest.getMessageId());
+                    return Mono.empty();
+                })
                 .then();
     }
 
     @Override
     public Mono<Void> startStep(UUID messageId, UUID correlationId, String serviceName, String stepName, String requestPayload) {
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("timestamp", LocalDateTime.now().toString());
-        metadata.put("action", "step_started");
+        if (messageId == null) {
+            log.warn("Cannot start step: messageId is null");
+            return Mono.empty();
+        }
 
-        AuditRequest auditRequest = AuditRequest.builder()
-                .messageId(messageId)
-                .correlationId(correlationId)
-                .serviceName(serviceName)
-                .status(AuditStatus.STARTED.name())
-                .stepName(stepName)
-                .requestPayload(requestPayload)
-                .metadata(toJson(metadata))
-                .build();
+        try {
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("timestamp", LocalDateTime.now().toString());
+            metadata.put("action", "step_started");
 
-        return createAuditEntry(auditRequest);
+            AuditRequest auditRequest = AuditRequest.builder()
+                    .messageId(messageId)
+                    .correlationId(correlationId)
+                    .serviceName(serviceName != null ? serviceName : "unknown-service")
+                    .status(AuditStatus.STARTED.name())
+                    .stepName(stepName != null ? stepName : "unknown-step")
+                    .requestPayload(requestPayload)
+                    .metadata(toJson(metadata))
+                    .build();
+
+            return createAuditEntry(auditRequest);
+        } catch (Exception e) {
+            log.error("Error starting audit step for messageId: {}", messageId, e);
+            return Mono.empty();
+        }
     }
 
     @Override
     public Mono<Void> completeStep(UUID messageId, UUID correlationId, String serviceName, String stepName, String responsePayload, Long processingTimeMs) {
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("timestamp", LocalDateTime.now().toString());
-        metadata.put("action", "step_completed");
+        if (messageId == null) {
+            log.warn("Cannot complete step: messageId is null");
+            return Mono.empty();
+        }
 
-        AuditRequest auditRequest = AuditRequest.builder()
-                .messageId(messageId)
-                .correlationId(correlationId)
-                .serviceName(serviceName)
-                .status(AuditStatus.COMPLETED.name())
-                .stepName(stepName)
-                .responsePayload(responsePayload)
-                .processingTimeMs(processingTimeMs)
-                .metadata(toJson(metadata))
-                .build();
+        try {
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("timestamp", LocalDateTime.now().toString());
+            metadata.put("action", "step_completed");
+            metadata.put("processing_time_ms", processingTimeMs != null ? processingTimeMs : 0L);
 
-        return createAuditEntry(auditRequest);
+            AuditRequest auditRequest = AuditRequest.builder()
+                    .messageId(messageId)
+                    .correlationId(correlationId)
+                    .serviceName(serviceName != null ? serviceName : "unknown-service")
+                    .status(AuditStatus.COMPLETED.name())
+                    .stepName(stepName != null ? stepName : "unknown-step")
+                    .responsePayload(responsePayload)
+                    .processingTimeMs(processingTimeMs != null ? processingTimeMs : 0L)
+                    .metadata(toJson(metadata))
+                    .build();
+
+            return createAuditEntry(auditRequest);
+        } catch (Exception e) {
+            log.error("Error completing audit step for messageId: {}", messageId, e);
+            return Mono.empty();
+        }
     }
 
     @Override
     public Mono<Void> failStep(UUID messageId, UUID correlationId, String serviceName, String stepName, String errorMessage, Long processingTimeMs) {
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("timestamp", LocalDateTime.now().toString());
-        metadata.put("action", "step_failed");
+        if (messageId == null) {
+            log.warn("Cannot fail step: messageId is null");
+            return Mono.empty();
+        }
 
-        AuditRequest auditRequest = AuditRequest.builder()
-                .messageId(messageId)
-                .correlationId(correlationId)
-                .serviceName(serviceName)
-                .status(AuditStatus.FAILED.name())
-                .stepName(stepName)
-                .errorMessage(errorMessage)
-                .processingTimeMs(processingTimeMs)
-                .metadata(toJson(metadata))
-                .build();
+        try {
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("timestamp", LocalDateTime.now().toString());
+            metadata.put("action", "step_failed");
+            metadata.put("processing_time_ms", processingTimeMs != null ? processingTimeMs : 0L);
 
-        return createAuditEntry(auditRequest);
+            AuditRequest auditRequest = AuditRequest.builder()
+                    .messageId(messageId)
+                    .correlationId(correlationId)
+                    .serviceName(serviceName != null ? serviceName : "unknown-service")
+                    .status(AuditStatus.FAILED.name())
+                    .stepName(stepName != null ? stepName : "unknown-step")
+                    .errorMessage(errorMessage != null ? errorMessage : "Unknown error")
+                    .processingTimeMs(processingTimeMs != null ? processingTimeMs : 0L)
+                    .metadata(toJson(metadata))
+                    .build();
+
+            return createAuditEntry(auditRequest);
+        } catch (Exception e) {
+            log.error("Error recording audit step failure for messageId: {}", messageId, e);
+            return Mono.empty();
+        }
     }
 
     @Override
     public String toJson(Object obj) {
+        if (obj == null) {
+            return "{}";
+        }
         try {
             return objectMapper.writeValueAsString(obj);
         } catch (JsonProcessingException e) {

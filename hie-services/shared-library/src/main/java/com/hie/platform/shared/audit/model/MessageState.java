@@ -60,6 +60,9 @@ public class MessageState {
     @Column(name = "total_processing_time_ms")
     private Long totalProcessingTimeMs;
 
+    @Column(name = "error_message", length = 1000)
+    private String errorMessage;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

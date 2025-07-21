@@ -102,7 +102,7 @@
             </dependency>
 
             <!-- Monitoring and Tracing -->
-            <dependency>
+    <!--        <dependency>
                 <groupId>io.micrometer</groupId>
                 <artifactId>micrometer-registry-prometheus</artifactId>
                 <version>${micrometer.version}</version>
@@ -116,7 +116,7 @@
                 <groupId>io.jaegertracing</groupId>
                 <artifactId>jaeger-client</artifactId>
                 <version>${jaeger.version}</version>
-            </dependency>
+            </dependency>-->
             <dependency>
                     <groupId>com.jayway.jsonpath</groupId>
                     <artifactId>json-path</artifactId>

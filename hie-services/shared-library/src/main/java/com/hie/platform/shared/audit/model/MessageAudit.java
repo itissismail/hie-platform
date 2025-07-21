@@ -1,104 +1,104 @@
 package com.hie.platform.shared.audit.model;
 
-import jakarta.persistence.*;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-import jakarta.persistence.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.Type;
-import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
  *  Author M.Ismail
- *  Entity for step-level audit records
+ *  R2DBC Entity for step-level audit records
  *  Date 15-July-2025
  */
 
-@Entity
-@Table(name = "message_audit")
+@Table("message_audit")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class MessageAudit {
 
+    @Id
+    private Long id;
+
+    @Column("message_id")
+    private UUID messageId;
+
+    @Column("correlation_id")
+    private UUID correlationId;
+
+    @Column("service_name")
+    private String serviceName;
+
+    @Column("status")
+    private String status;
+
+    @Column("processing_time_ms")
+    private Long processingTimeMs;
+
+    @Column("error_message")
+    private String errorMessage;
+
+    @CreatedDate
+    @Column("created_at")
+    private LocalDateTime createdAt;
+
+    @Column("metadata")
+    private String metadata;
+
+    @Column("step_name")
+    private String stepName;
+
+    @Column("step_sequence")
+    private Integer stepSequence;
+
+    @Column("request_payload")
+    private String requestPayload;
+
+    @Column("response_payload")
+    private String responsePayload;
+
     public MessageAudit(UUID messageId, UUID correlationId, String serviceName, String status) {
         this.messageId = messageId;
         this.correlationId = correlationId;
         this.serviceName = serviceName;
         this.status = status;
-    }
-
-    public MessageAudit(UUID messageId, UUID correlationId, String serviceName, String status, Long processingTimeMs, String errorMessage, LocalDateTime createdAt, String metadata, String stepName, Integer stepSequence, String requestPayload, String responsePayload) {
-        this.messageId = messageId;
-        this.correlationId = correlationId;
-        this.serviceName = serviceName;
-        this.status = status;
-        this.processingTimeMs = processingTimeMs;
-        this.errorMessage = errorMessage;
-        this.createdAt = createdAt;
-        this.metadata = metadata;
-        this.stepName = stepName;
-        this.stepSequence = stepSequence;
-        this.requestPayload = requestPayload;
-        this.responsePayload = responsePayload;
-    }
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "message_id", nullable = false)
-    private UUID messageId;
-
-    @Column(name = "correlation_id", nullable = false)
-    private UUID correlationId;
-
-    @Column(name = "service_name", nullable = false, length = 50)
-    private String serviceName;
-
-    @Column(name = "status", nullable = false, length = 20)
-    private String status;
-
-    @Column(name = "processing_time_ms")
-    private Long processingTimeMs;
-
-    @Column(name = "error_message", columnDefinition = "TEXT")
-    private String errorMessage;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    /*    @Column(name = "metadata", columnDefinition = "jsonb")
-        @Type(value = "io.hypersistence.utils.hibernate.type.json.JsonType")
-        private String metadata;*/
-    @Column(name = "metadata", columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private String metadata;
-
-    @Column(name = "step_name", nullable = false, length = 100)
-    private String stepName;
-
-    @Column(name = "step_sequence")
-    private Integer stepSequence;
-
-    @Column(name = "request_payload", columnDefinition = "TEXT")
-    private String requestPayload;
-
-    @Column(name = "response_payload", columnDefinition = "TEXT")
-    private String responsePayload;
-
-    @PrePersist
-    protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public void setMetadataAsJson(Object metadataObject) {
+        if (metadataObject == null) {
+            this.metadata = null;
+        } else if (metadataObject instanceof String) {
+            this.metadata = (String) metadataObject;
+        } else {
+            // Convert object to JSON string
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                this.metadata = mapper.writeValueAsString(metadataObject);
+            } catch (Exception e) {
+                this.metadata = "{}";
+            }
+        }
+    }
+
+    public <T> T getMetadataAsObject(Class<T> clazz) {
+        if (metadata == null || metadata.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(metadata, clazz);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

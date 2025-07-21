@@ -6,7 +6,9 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  - job_name: 'hie-services'
-    static_configs:
-      - targets: ['host.docker.internal:8080', 'host.docker.internal:8081', 'host.docker.internal:8082']
-    metrics_path: '/actuator/prometheus'
+  # 🔒 Scraping disabled for all HIE services
+#  - job_name: 'hie-services'
+#    static_configs:
+#      - targets: ['host.docker.internal:8080', 'host.docker.internal:8081', 'host.docker.internal:8082']
+##    metrics_path: '/actuator/prometheus'
+#    metrics_path: '/'
