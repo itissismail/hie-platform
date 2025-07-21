@@ -14,8 +14,7 @@ import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
         HibernateJpaAutoConfiguration.class
 })*/
 @SpringBootApplication
-@ComponentScan(basePackages = {"com.hie.platform.gateway", "com.hie.platform.shared"})
-//@EnableJpaRepositories(basePackages = "com.hie.platform.shared.audit.repository")
+@ComponentScan(basePackages = {"com.hie.platform.gateway", "com.hie.platform.shared.audit"})
 @EnableR2dbcRepositories(basePackages = "com.hie.platform.shared.audit.repository")
 @EntityScan(basePackages = "com.hie.platform.shared")
 //        ,excludeFilters = @ComponentScan.Filter(

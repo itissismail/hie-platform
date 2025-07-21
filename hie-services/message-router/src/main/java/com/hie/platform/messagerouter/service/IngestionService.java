@@ -54,38 +54,17 @@ public class IngestionService {
      */
     @AuditStep(serviceName = "message-router-service", stepName = MessageStatus.PROCESSING)
     public Mono<String> ingestReactive(String hl7Message) {
-        log.debug("IngestionService.ingestReactive() called");
-        log.debug("Processing HL7 message: {}",
+        log.debug(" Processing HL7 message in ingest-reactive: {}",
                 hl7Message != null ? hl7Message.substring(0, Math.min(100, hl7Message.length())) + "..." : "null");
 
         String correlationId = UUID.randomUUID().toString();
         UUID messageId = UUID.randomUUID();
-
         // Extract basic info from HL7 message
         String messageType = extractMessageType(hl7Message);
         String patientId = extractPatientId(hl7Message);
         String sourceOrganization = extractSourceOrganization(hl7Message);
 
-     /*   // Chain all operations reactively
-        return uploadToMinio(hl7Message, sourceOrganization, correlationId)
-                .flatMap(uploadResult -> createMessageStateEntry(messageId, correlationId, messageType,
-                        patientId, sourceOrganization, uploadResult))
-                .flatMap(messageState -> publishToProcessingQueue(messageState, uploadResult, hl7Message)
-                        .map(success -> messageState)) // Return messageState for next step
-                .flatMap(messageState -> updateMessageStateAfterPublish(messageId, correlationId))
-                .map(messageState -> {
-                    log.debug("Complete processing pipeline finished successfully. CorrelationId: {}, MessageId: {}",
-                            correlationId, messageId);
-                    return correlationId;
-                })
-                .onErrorResume(error -> {
-                    log.error("Error in processing pipeline for correlationId: {}", correlationId, error);
-                    return createFailedMessageStateEntry(messageId, correlationId, messageType,
-                            patientId, sourceOrganization, error.getMessage())
-                            .then(Mono.error(error)); // Re-throw error after creating failed entry
-                });*/
-
-        return uploadToMinio(hl7Message, sourceOrganization, correlationId)
+        return uploadToMinio(hl7Message, sourceOrganization, messageId.toString())
                 .flatMap(uploadResult ->
                         createMessageStateEntry(messageId, correlationId, messageType,
                                 patientId, sourceOrganization, uploadResult)
@@ -124,20 +103,6 @@ public class IngestionService {
         String patientId = extractPatientId(hl7Message);
         String sourceOrganization = extractSourceOrganization(hl7Message);
 
-      /*  return uploadToMinio(hl7Message, sourceOrganization, correlationId)
-                .flatMap(uploadResult -> createMessageStateEntry(messageId, correlationId, messageType,
-                        patientId, sourceOrganization, uploadResult))
-                .flatMap(messageState -> routeToSpecificQueue(messageState, uploadResult,
-                        hl7Message, processingType)
-                        .map(success -> messageState))
-                .flatMap(messageState -> updateMessageStateAfterPublish(messageId, correlationId))
-                .map(success -> correlationId)
-                .onErrorResume(error -> {
-                    log.error("Error in routing pipeline for correlationId: {}", correlationId, error);
-                    return createFailedMessageStateEntry(messageId, correlationId, messageType,
-                            patientId, sourceOrganization, error.getMessage())
-                            .then(Mono.error(error));
-                });*/
         return uploadToMinio(hl7Message, sourceOrganization, correlationId)
                 .flatMap(uploadResult ->
                         createMessageStateEntry(messageId, correlationId, messageType,
@@ -165,43 +130,19 @@ public class IngestionService {
     /**
      * Step 1: Upload HL7 message to MinIO
      */
-    private Mono<FileUploadResult> uploadToMinio(String hl7Message, String sourceOrganization, String correlationId) {
-        log.debug("Starting MinIO upload for correlationId: {}", correlationId);
+    private Mono<FileUploadResult> uploadToMinio(String hl7Message, String sourceOrganization, String messageId) {
+        log.debug("Starting MinIO upload for messageId: {}", messageId);
 
-        return minioService.uploadFile(hl7Message, sourceOrganization, correlationId, "hl7", "text/plain")
+        return minioService.uploadFile(hl7Message, sourceOrganization, messageId, "txt", "text/plain")
                 .doOnSuccess(result -> log.debug("MinIO upload completed successfully. Path: {}, CorrelationId: {}",
-                        result.getMinioPath(), correlationId))
-                .doOnError(error -> log.error("MinIO upload failed for correlationId: {}", correlationId, error));
+                        result.getMinioPath(), messageId))
+                .doOnError(error -> log.error("MinIO upload failed for correlationId: {}", messageId, error));
     }
 
     /**
      * Step 2: Create entry in MessageState table (REACTIVE)
      */
-    private Mono<MessageState> createMessageStateEntry(UUID messageId, String correlationId,
-                                                       String messageType, String patientId,
-                                                       String sourceOrganization, FileUploadResult uploadResult) {
 
-        log.debug("Creating message state entry for messageId: {}", messageId);
-
-        MessageState messageState = MessageState.builder()
-                .messageId(messageId)
-                .currentStatus(MessageStatus.PROCESSING.name())
-                .sourceOrganization(sourceOrganization)
-                .messageType(messageType)
-                .patientId(patientId)
-                .s3Location(uploadResult.getS3Location())
-                .lastProcessedBy(serviceName)
-                .totalProcessingTimeMs(0L)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        return messageStateRepository.save(messageState)
-                .doOnSuccess(savedState -> log.debug("Message state entry created with id: {} for correlationId: {}",
-                        savedState.getId(), correlationId))
-                .doOnError(error -> log.error("Failed to create message state entry for messageId: {}",
-                        messageId, error));
-    }
 
     /**
      * Step 3: Publish message to RabbitMQ processing queue
@@ -277,16 +218,61 @@ public class IngestionService {
         log.debug("Updating message state after successful publish for messageId: {}", messageId);
 
         return messageStateRepository.findByMessageId(messageId)
-                .switchIfEmpty(Mono.error(new RuntimeException("MessageState not found for messageId: " + messageId)))
                 .flatMap(messageState -> {
+                    log.debug("Existing message state found, updating...");
+
+                    // Update existing fields
                     messageState.setCurrentStatus(MessageStatus.QUEUED.name());
                     messageState.setUpdatedAt(LocalDateTime.now());
                     messageState.setLastProcessedBy(serviceName);
 
                     return messageStateRepository.save(messageState);
                 })
-                .doOnSuccess(updatedState -> log.debug("Message state updated successfully for messageId: {}", messageId))
-                .doOnError(error -> log.error("Failed to update message state for messageId: {}", messageId, error));
+                .switchIfEmpty(Mono.error(new RuntimeException("MessageState not found for messageId: " + messageId)));
+
+    }
+
+
+    private Mono<MessageState> createMessageStateEntry(UUID messageId, String correlationId,
+                                                       String messageType, String patientId,
+                                                       String sourceOrganization, FileUploadResult uploadResult) {
+
+        log.debug("Creating or updating message state entry for messageId: {}", messageId);
+
+        return messageStateRepository.findByMessageId(messageId)
+                .flatMap(existing -> {
+                    log.debug("Existing message state found, updating...");
+
+                    // Update existing fields
+                    existing.setCurrentStatus(MessageStatus.PROCESSING.name());
+                    existing.setSourceOrganization(sourceOrganization);
+                    existing.setMessageType(messageType);
+                    existing.setPatientId(patientId);
+                    existing.setS3Location(uploadResult.getS3Location());
+                    existing.setLastProcessedBy(serviceName);
+                    existing.setTotalProcessingTimeMs(0L);
+                    existing.setUpdatedAt(LocalDateTime.now());
+
+                    return messageStateRepository.save(existing);
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    log.debug("No existing state found, inserting new message state entry...");
+
+                    MessageState newState = MessageState.builder()
+                            .messageId(messageId)
+                            .currentStatus(MessageStatus.PROCESSING.name())
+                            .sourceOrganization(sourceOrganization)
+                            .messageType(messageType)
+                            .patientId(patientId)
+                            .s3Location(uploadResult.getS3Location())
+                            .lastProcessedBy(serviceName)
+                            .totalProcessingTimeMs(0L)
+                            .createdAt(LocalDateTime.now())
+                            .updatedAt(LocalDateTime.now())
+                            .build();
+
+                    return messageStateRepository.save(newState);
+                }));
     }
 
     /**
@@ -298,22 +284,43 @@ public class IngestionService {
 
         log.debug("Creating failed message state entry for messageId: {}", messageId);
 
-        MessageState messageState = MessageState.builder()
-                .messageId(messageId)
-                .currentStatus(MessageStatus.FAILED.name())
-                .sourceOrganization(sourceOrganization)
-                .messageType(messageType)
-                .patientId(patientId)
-                .lastProcessedBy(serviceName)
-                .totalProcessingTimeMs(0L)
-                .errorMessage(errorMessage)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
 
-        return messageStateRepository.save(messageState)
-                .doOnError(error -> log.error("Failed to create failed message state entry for messageId: {}",
-                        messageId, error));
+        return messageStateRepository.findByMessageId(messageId)
+                .flatMap(existing -> {
+                    log.debug("Existing message state found while adding failed message state entry , updating...");
+
+                    // Update existing fields
+                    existing.setCurrentStatus(MessageStatus.FAILED.name());
+                    existing.setSourceOrganization(sourceOrganization);
+                    existing.setMessageType(messageType);
+                    existing.setPatientId(patientId);
+                    existing.setLastProcessedBy(serviceName);
+                    existing.setTotalProcessingTimeMs(0L);
+                    existing.setErrorMessage(errorMessage);
+                    existing.setCreatedAt(LocalDateTime.now());
+                    existing.setUpdatedAt(LocalDateTime.now());
+
+                    log.debug("Updating existing  messageState with id: {}", existing.getId());
+                    return messageStateRepository.save(existing);
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    log.debug("No existing state found, inserting new message state entry...");
+
+                    MessageState messageState = MessageState.builder()
+                            .messageId(messageId)
+                            .currentStatus(MessageStatus.FAILED.name())
+                            .sourceOrganization(sourceOrganization)
+                            .messageType(messageType)
+                            .patientId(patientId)
+                            .lastProcessedBy(serviceName)
+                            .totalProcessingTimeMs(0L)
+                            .errorMessage(errorMessage)
+                            .createdAt(LocalDateTime.now())
+                            .updatedAt(LocalDateTime.now())
+                            .build();
+                    log.debug("Saving a new messageState with id: {}", messageState.getId());
+                    return messageStateRepository.save(messageState);
+                }));
     }
 
     /**

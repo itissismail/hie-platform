@@ -1,76 +1,57 @@
 package com.hie.platform.shared.audit.model;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+
+import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.data.relational.core.mapping.Column;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- *  Author M.Ismail
- *  Entity for message-level state tracking
- *  Date 15-July-2025
- */
-
-@Entity
-@Table(name = "message_state")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Table("message_state")
 public class MessageState {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "message_id", unique = true, nullable = false)
+    @Column("message_id")
     private UUID messageId;
 
-    @Column(name = "current_status", nullable = false, length = 20)
+    @Column("current_status")
     private String currentStatus;
 
-    @Column(name = "source_organization", nullable = false, length = 100)
+    @Column("source_organization")
     private String sourceOrganization;
 
-    @Column(name = "message_type", nullable = false, length = 10)
+    @Column("message_type")
     private String messageType;
 
-    @Column(name = "patient_id", length = 50)
+    @Column("patient_id")
     private String patientId;
 
-    @Column(name = "global_patient_id", length = 50)
+    @Column("global_patient_id")
     private String globalPatientId;
 
-    @Column(name = "s3_location", length = 500)
+    @Column("s3_location")
     private String s3Location;
 
-    @Column(name = "created_at")
+    @Column("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column("updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "last_processed_by", length = 50)
+    @Column("last_processed_by")
     private String lastProcessedBy;
 
-    @Column(name = "total_processing_time_ms")
+    @Column("total_processing_time_ms")
     private Long totalProcessingTimeMs;
 
-    @Column(name = "error_message", length = 1000)
+    @Column("error_message")
     private String errorMessage;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 }

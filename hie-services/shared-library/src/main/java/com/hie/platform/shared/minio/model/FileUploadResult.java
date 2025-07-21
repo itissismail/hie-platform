@@ -10,7 +10,7 @@ public class FileUploadResult {
     private String minioPath;
     private String s3Location;
     private String bucketName;
-    private String correlationId;
+    private String messageId;
     private String organizationId;
     private Long fileSize;
     private String contentType;

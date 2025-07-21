@@ -8,6 +8,12 @@ spring:
     name: message-router
 #  main:
 #    web-application-type: reactive
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:admin123}
+    virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
 
   datasource:
     url: jdbc:postgresql://localhost:5432/hie_platform
@@ -34,8 +40,8 @@ spring:
 # MinIO Configuration
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
-  access-key: ${MINIO_ACCESS_KEY:minioadmin}
-  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  access-key: ${MINIO_ACCESS_KEY:R8HAZADEIVQWVW441MJO}
+  secret-key: ${MINIO_SECRET_KEY:MxTgZ31SD8Dj8CVctAGR55rcCvkWOR93jR1XZC+i}
   bucket-name: ${MINIO_BUCKET_NAME:hl7-messages}
   region: ${MINIO_REGION:us-east-1}
   secure: ${MINIO_SECURE:false}
@@ -44,8 +50,8 @@ minio:
 rabbitmq:
   host: ${RABBITMQ_HOST:localhost}
   port: ${RABBITMQ_PORT:5672}
-  username: ${RABBITMQ_USERNAME:guest}
-  password: ${RABBITMQ_PASSWORD:guest}
+  username: ${RABBITMQ_USERNAME:admin}
+  password: ${RABBITMQ_PASSWORD:admin123}
   virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
   exchange-name: ${RABBITMQ_EXCHANGE_NAME:hl7-processing-exchange}
   service-name: ${RABBITMQ_SERVICE_NAME:message-router-service}

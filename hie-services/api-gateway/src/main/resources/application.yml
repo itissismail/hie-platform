@@ -60,45 +60,7 @@ spring:
       max-idle-time: ${DB_POOL_MAX_IDLE_TIME:30m}
       validation-query: ${DB_POOL_VALIDATION_QUERY:SELECT 1}
 
-# MinIO Configuration for file storage
-minio:
-  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
-  access-key: ${MINIO_ACCESS_KEY:minioadmin}
-  secret-key: ${MINIO_SECRET_KEY:minioadmin}
-  bucket-name: ${MINIO_BUCKET_NAME:hl7-messages}
-  region: ${MINIO_REGION:us-east-1}
-  secure: ${MINIO_SECURE:false}
 
-# RabbitMQ Configuration for message queuing
-rabbitmq:
-  host: ${RABBITMQ_HOST:localhost}
-  port: ${RABBITMQ_PORT:5672}
-  username: ${RABBITMQ_USERNAME:guest}
-  password: ${RABBITMQ_PASSWORD:guest}
-  virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
-  exchange-name: ${RABBITMQ_EXCHANGE_NAME:hl7-processing-exchange}
-
-  # Queue definitions
-  queues:
-    hl7-processing: ${RABBITMQ_QUEUE_PROCESSING:hl7-processing-queue}
-    hl7-validation: ${RABBITMQ_QUEUE_VALIDATION:hl7-validation-queue}
-    hl7-conversion: ${RABBITMQ_QUEUE_CONVERSION:hl7-conversion-queue}
-    hl7-storage: ${RABBITMQ_QUEUE_STORAGE:hl7-storage-queue}
-    dead-letter: ${RABBITMQ_QUEUE_DEAD_LETTER:hl7-dead-letter-queue}
-
-  # Routing keys
-  routing-keys:
-    hl7-processing: ${RABBITMQ_ROUTING_PROCESSING:hl7.processing}
-    hl7-validation: ${RABBITMQ_ROUTING_VALIDATION:hl7.validation}
-    hl7-conversion: ${RABBITMQ_ROUTING_CONVERSION:hl7.conversion}
-    hl7-storage: ${RABBITMQ_ROUTING_STORAGE:hl7.storage}
-
-  # Message settings
-  message-settings:
-    message-ttl: ${RABBITMQ_MESSAGE_TTL:3600000} # 1 hour
-    max-retries: ${RABBITMQ_MAX_RETRIES:3}
-    durable: ${RABBITMQ_DURABLE:true}
-    persistent: ${RABBITMQ_PERSISTENT:true}
 
 jwt:
   secret: ${JWT_SECRET:mySecretKeyForHIEPlatform2024}

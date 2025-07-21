@@ -45,7 +45,7 @@ public class ReactiveAuditTrailAspect {
                 return ((Mono<?>) result)
                         .flatMap(response -> handleReactiveAudit(response, serviceName, stepName, startTime, null))
                         .doOnError(error -> handleReactiveAudit(null, serviceName, stepName, startTime, error))
-                        .onErrorResume(error -> Mono.error(error));
+                        .onErrorResume(Mono::error);
             } else {
                 return handleNonReactiveAudit(result, serviceName, stepName, startTime, null);
             }

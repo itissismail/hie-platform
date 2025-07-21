@@ -49,14 +49,14 @@ public class MinioService {
      * Upload file with structured path and custom content type
      */
     public Mono<FileUploadResult> uploadFile(String content, String organizationId,
-                                             String correlationId, String fileExtension, String contentType) {
+                                             String messageId, String fileExtension, String contentType) {
         return Mono.fromCallable(() -> {
             try {
-                // Generate structured path
-                String minioPath = generateStructuredPath(organizationId, correlationId, fileExtension);
-
-                // Ensure bucket exists
+                log.info("Attempting to upload content of size: {} bytes", content.length());
+                String minioPath = generateStructuredPath(organizationId, messageId, fileExtension);
+                log.info("Generated MinIO path: {}", minioPath);
                 ensureBucketExists();
+                log.info("Bucket check/creation complete for bucket: {}", minioProperties.getBucketName());
 
                 // Convert content to bytes
                 byte[] contentBytes = content.getBytes(StandardCharsets.UTF_8);
@@ -79,7 +79,7 @@ public class MinioService {
                         .minioPath(minioPath)
                         .s3Location(s3Location)
                         .bucketName(minioProperties.getBucketName())
-                        .correlationId(correlationId)
+                        .messageId(messageId)
                         .organizationId(organizationId)
                         .fileSize((long) contentBytes.length)
                         .contentType(contentType)
@@ -87,7 +87,7 @@ public class MinioService {
                         .build();
 
             } catch (Exception e) {
-                log.error("Error uploading file to MinIO for correlationId: {}", correlationId, e);
+                log.error("Error uploading file to MinIO for messageId: {}", messageId, e);
                 throw new MinioServiceException("Failed to upload file to MinIO", e);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -97,10 +97,10 @@ public class MinioService {
      * Upload binary file
      */
     public Mono<FileUploadResult> uploadFile(byte[] content, String organizationId,
-                                             String correlationId, String fileExtension, String contentType) {
+                                             String messageId, String fileExtension, String contentType) {
         return Mono.fromCallable(() -> {
             try {
-                String minioPath = generateStructuredPath(organizationId, correlationId, fileExtension);
+                String minioPath = generateStructuredPath(organizationId, messageId, fileExtension);
                 ensureBucketExists();
 
                 minioClient.putObject(
@@ -118,7 +118,7 @@ public class MinioService {
                         .minioPath(minioPath)
                         .s3Location(s3Location)
                         .bucketName(minioProperties.getBucketName())
-                        .correlationId(correlationId)
+                        .messageId(messageId)
                         .organizationId(organizationId)
                         .fileSize((long) content.length)
                         .contentType(contentType)
@@ -210,7 +210,7 @@ public class MinioService {
     /**
      * Generate structured MinIO path: organization-id/year/month/day/correlationId.ext
      */
-    private String generateStructuredPath(String organizationId, String correlationId, String fileExtension) {
+    private String generateStructuredPath(String organizationId, String messageId, String fileExtension) {
         LocalDateTime now = LocalDateTime.now();
         String year = now.format(DateTimeFormatter.ofPattern("yyyy"));
         String month = now.format(DateTimeFormatter.ofPattern("MM"));
@@ -219,7 +219,7 @@ public class MinioService {
         String sanitizedOrgId = sanitizeOrganizationId(organizationId);
         String extension = fileExtension.startsWith(".") ? fileExtension : "." + fileExtension;
 
-        return String.format("%s/%s/%s/%s/%s%s", sanitizedOrgId, year, month, day, correlationId, extension);
+        return String.format("%s/%s/%s/%s/%s%s", sanitizedOrgId, year, month, day, messageId, extension);
     }
 
     /**
