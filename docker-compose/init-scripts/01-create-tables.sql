@@ -19,6 +19,7 @@ CREATE TABLE message_audit (
 CREATE TABLE message_state (
     id BIGSERIAL PRIMARY KEY,
     message_id UUID UNIQUE NOT NULL,
+    correlation_id UUID NOT NULL,
     current_status VARCHAR(20) NOT NULL,
     source_organization VARCHAR(100) NOT NULL,
     message_type VARCHAR(10) NOT NULL,

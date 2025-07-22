@@ -14,5 +14,6 @@ public class AppConstant {
     public static final String MESSAGE_TYPE_HEADER = "X-Message-Type";
     public static final String PATIENT_ID_HEADER = "X-Patient-ID";
     public static final String GLOBAL_PATIENT_ID_HEADER = "X-Global-Patient-ID";
+    public static final String FILE_EXTENSION_TXT = "txt";
 }
 

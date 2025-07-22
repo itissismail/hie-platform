@@ -4,6 +4,7 @@ import com.hie.platform.messagerouter.service.IngestionService;
 import com.hie.platform.messagerouter.service.IngestionServiceMock;
 import com.hie.platform.shared.audit.annotation.AuditStep;
 import com.hie.platform.shared.audit.model.MessageStatus;
+import com.hie.platform.shared.util.AppConstant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -71,9 +72,12 @@ public class HL7IngestController {
         String userId = request.getHeaders().getFirst("X-User-ID");
         String userRole = request.getHeaders().getFirst("X-User-Role");
 
+        String messageIdStr = request.getHeaders().getFirst(AppConstant.MESSAGE_ID_HEADER);
+        String correlationIdStr = request.getHeaders().getFirst(AppConstant.CORRELATION_ID_HEADER);
+
         // Properly handle the reactive Mono<String>
         return hl7MessageMono
-                .flatMap(hl7Message -> ingestionService.ingestReactive(hl7Message)
+                .flatMap(hl7Message -> ingestionService.ingestReactive(hl7Message,messageIdStr,correlationIdStr)
                         .map(correlationId -> {
                             Map<String, Object> response = new HashMap<>();
                             response.put("status", "success");

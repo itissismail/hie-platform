@@ -1,6 +1,8 @@
 package com.hie.platform.shared.rabbitmq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hie.platform.shared.audit.model.MessageState;
+import com.hie.platform.shared.minio.model.FileUploadResult;
 import com.hie.platform.shared.rabbitmq.config.RabbitMQProperties;
 import com.hie.platform.shared.rabbitmq.model.QueueMessage;
 import com.hie.platform.shared.rabbitmq.exception.RabbitMQServiceException;
@@ -15,6 +17,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -38,6 +41,74 @@ public class RabbitMQService {
                 rabbitMQProperties.getMessageSettings().isPersistent(),
                 rabbitMQProperties.getMessageSettings().isDurable());
     }
+
+    public Mono<Boolean> publishToProcessingQueue(MessageState messageState, FileUploadResult uploadResult,
+                                                   String hl7Message, String serviceName,String correlationId) {
+
+        log.debug("Publishing to processing queue for messageId: {}", messageState.getMessageId());
+
+        // Create additional processing data
+        Map<String, Object> additionalData = createAdditionalProcessingData(hl7Message, uploadResult,serviceName);
+
+        // Create queue message using the RabbitMQ service helper method
+        QueueMessage queueMessage = this.createHL7ProcessingMessage(
+                correlationId,
+                messageState.getSourceOrganization(),
+                messageState.getMessageType(),
+                messageState.getPatientId(),
+                uploadResult.getMinioPath(),
+                uploadResult.getS3Location(),
+                additionalData
+        );
+
+        // Set additional metadata
+        queueMessage.setCreatedAt(LocalDateTime.now());
+        queueMessage.setHeaders(createProcessingHeaders(messageState, uploadResult,serviceName));
+
+        return this.sendToProcessingQueue(queueMessage)
+                .doOnSuccess(success -> log.debug("Message published successfully to processing queue. MessageId: {}",
+                        messageState.getMessageId()))
+                .doOnError(error -> log.error("Failed to publish message to processing queue. MessageId: {}",
+                        messageState.getMessageId(), error));
+    }
+
+    /**
+     * Route to specific queue based on processing type
+     */
+    public Mono<Boolean> routeToSpecificQueue(MessageState messageState, FileUploadResult uploadResult,
+                                               String hl7Message, String processingType, String serviceName, String correlationId) {
+
+        Map<String, Object> additionalData = createAdditionalProcessingData(hl7Message, uploadResult,serviceName);
+
+        QueueMessage queueMessage = this.createHL7ProcessingMessage(
+                correlationId,
+                messageState.getSourceOrganization(),
+                messageState.getMessageType(),
+                messageState.getPatientId(),
+                uploadResult.getMinioPath(),
+                uploadResult.getS3Location(),
+                additionalData
+        );
+
+        queueMessage.setCreatedAt(LocalDateTime.now());
+        queueMessage.setHeaders(createProcessingHeaders(messageState, uploadResult,serviceName));
+
+        // Route based on processing type
+        return switch (processingType.toUpperCase()) {
+            case "VALIDATION" -> this.sendToValidationQueue(queueMessage);
+            case "CONVERSION" -> this.sendToConversionQueue(queueMessage);
+            case "STORAGE" -> this.sendToStorageQueue(queueMessage);
+            case "PROCESSING" -> this.sendToProcessingQueue(queueMessage);
+            default -> {
+                log.warn("Unknown processing type: {}. Routing to default processing queue.", processingType);
+                yield this.sendToProcessingQueue(queueMessage);
+            }
+        };
+    }
+
+
+
+
 
     /**
      * Send message to HL7 Processing Queue
@@ -235,4 +306,50 @@ public class RabbitMQService {
         return rabbitMQProperties.getMessageSettings().isPersistent() &&
                 rabbitMQProperties.getMessageSettings().isDurable();
     }
+
+    /**
+     * Create additional processing data for queue message
+     */
+    private Map<String, Object> createAdditionalProcessingData(String hl7Message, FileUploadResult uploadResult, String serviceName) {
+        Map<String, Object> additionalData = new HashMap<>();
+
+        // File metadata
+        additionalData.put("fileSize", uploadResult.getFileSize());
+        additionalData.put("contentType", uploadResult.getContentType());
+        additionalData.put("uploadedAt", uploadResult.getUploadedAt().toString());
+        additionalData.put("bucketName", uploadResult.getBucketName());
+
+        // Message metadata
+        if (hl7Message != null) {
+            additionalData.put("hl7MessageLength", hl7Message.length());
+            additionalData.put("hl7Preview", hl7Message.length() > 500 ?
+                    hl7Message.substring(0, 500) + "..." : hl7Message);
+        }
+
+        // Processing metadata
+        additionalData.put("processedBy", serviceName);
+        additionalData.put("processedAt", LocalDateTime.now().toString());
+        additionalData.put("ingestionTimestamp", LocalDateTime.now().toString());
+
+        return additionalData;
+    }
+
+    /**
+     * Create processing headers for queue message
+     */
+    private Map<String, String> createProcessingHeaders(MessageState messageState, FileUploadResult uploadResult, String serviceName) {
+        Map<String, String> headers = new HashMap<>();
+
+        headers.put("messageId", messageState.getMessageId().toString());
+        headers.put("messageType", messageState.getMessageType());
+        headers.put("sourceOrganization", messageState.getSourceOrganization());
+        headers.put("patientId", messageState.getPatientId() != null ? messageState.getPatientId() : "");
+        headers.put("s3Location", uploadResult.getS3Location());
+        headers.put("minioPath", uploadResult.getMinioPath());
+        headers.put("processedBy", serviceName);
+        headers.put("ingestionTimestamp", LocalDateTime.now().toString());
+
+        return headers;
+    }
+
 }

@@ -22,6 +22,9 @@ public class MessageState {
     @Column("message_id")
     private UUID messageId;
 
+    @Column("correlation_id")
+    private UUID correlationId;
+
     @Column("current_status")
     private String currentStatus;
 

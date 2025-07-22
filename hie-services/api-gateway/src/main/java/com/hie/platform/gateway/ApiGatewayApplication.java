@@ -15,7 +15,7 @@ import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
 })*/
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.hie.platform.gateway", "com.hie.platform.shared.audit"})
-@EnableR2dbcRepositories(basePackages = "com.hie.platform.shared.audit.repository")
+@EnableR2dbcRepositories(basePackages = {"com.hie.platform.shared.audit.repository", "com.hie.platform.shared.message.repository"})
 @EntityScan(basePackages = "com.hie.platform.shared")
 //        ,excludeFilters = @ComponentScan.Filter(
 //                type = FilterType.ASSIGNABLE_TYPE,

@@ -11,7 +11,7 @@ import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
 @SpringBootApplication
 @ComponentScan(basePackages = {"com.hie.platform.messagerouter", "com.hie.platform.shared"})
 //@EnableJpaRepositories(basePackages = "com.hie.platform.shared.repository")
-@EnableR2dbcRepositories(basePackages = "com.hie.platform.shared.audit.repository")
+@EnableR2dbcRepositories(basePackages = {"com.hie.platform.shared.audit.repository", "com.hie.platform.shared.message.repository"})
 @EntityScan(basePackages = "com.hie.platform.shared")
 @EnableAuditTrail
 public class MessageRouterApplication {

@@ -1,5 +1,5 @@
 
-package com.hie.platform.shared.audit.repository;
+package com.hie.platform.shared.message.repository;
 
 import com.hie.platform.shared.audit.model.MessageState;
 import org.springframework.data.r2dbc.repository.Modifying;

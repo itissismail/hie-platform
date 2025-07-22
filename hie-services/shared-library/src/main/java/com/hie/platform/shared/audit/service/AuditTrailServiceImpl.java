@@ -8,7 +8,7 @@ import com.hie.platform.shared.audit.model.AuditStatus;
 import com.hie.platform.shared.audit.model.MessageAudit;
 import com.hie.platform.shared.audit.model.MessageState;
 import com.hie.platform.shared.audit.repository.MessageAuditRepository;
-import com.hie.platform.shared.audit.repository.MessageStateRepository;
+import com.hie.platform.shared.message.repository.MessageStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

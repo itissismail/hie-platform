@@ -41,20 +41,19 @@ public class MinioService {
      * Upload file with structured path: organization-id/year/month/day/correlationId.ext
      */
     public Mono<FileUploadResult> uploadFile(String content, String organizationId,
-                                             String correlationId, String fileExtension) {
-        return uploadFile(content, organizationId, correlationId, fileExtension, "text/plain");
+                                             String correlationId, String fileExtension,String minioPath ) {
+        return uploadFile(content, organizationId, correlationId, fileExtension, "text/plain",minioPath);
     }
 
     /**
      * Upload file with structured path and custom content type
      */
     public Mono<FileUploadResult> uploadFile(String content, String organizationId,
-                                             String messageId, String fileExtension, String contentType) {
+                                             String messageId, String fileExtension, String contentType,String minioPath) {
         return Mono.fromCallable(() -> {
             try {
                 log.info("Attempting to upload content of size: {} bytes", content.length());
-                String minioPath = generateStructuredPath(organizationId, messageId, fileExtension);
-                log.info("Generated MinIO path: {}", minioPath);
+
                 ensureBucketExists();
                 log.info("Bucket check/creation complete for bucket: {}", minioProperties.getBucketName());
 
@@ -97,10 +96,10 @@ public class MinioService {
      * Upload binary file
      */
     public Mono<FileUploadResult> uploadFile(byte[] content, String organizationId,
-                                             String messageId, String fileExtension, String contentType) {
+                                             String messageId, String fileExtension, String contentType, String minioPath ) {
         return Mono.fromCallable(() -> {
             try {
-                String minioPath = generateStructuredPath(organizationId, messageId, fileExtension);
+                //String minioPath = generateStructuredPath(organizationId, messageId, fileExtension);
                 ensureBucketExists();
 
                 minioClient.putObject(
@@ -207,35 +206,7 @@ public class MinioService {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
-    /**
-     * Generate structured MinIO path: organization-id/year/month/day/correlationId.ext
-     */
-    private String generateStructuredPath(String organizationId, String messageId, String fileExtension) {
-        LocalDateTime now = LocalDateTime.now();
-        String year = now.format(DateTimeFormatter.ofPattern("yyyy"));
-        String month = now.format(DateTimeFormatter.ofPattern("MM"));
-        String day = now.format(DateTimeFormatter.ofPattern("dd"));
 
-        String sanitizedOrgId = sanitizeOrganizationId(organizationId);
-        String extension = fileExtension.startsWith(".") ? fileExtension : "." + fileExtension;
-
-        return String.format("%s/%s/%s/%s/%s%s", sanitizedOrgId, year, month, day, messageId, extension);
-    }
-
-    /**
-     * Sanitize organization ID for filesystem safety
-     */
-    private String sanitizeOrganizationId(String organizationId) {
-        if (organizationId == null || organizationId.trim().isEmpty()) {
-            return "unknown-org";
-        }
-
-        return organizationId.trim()
-                .toLowerCase()
-                .replaceAll("[^a-z0-9\\-_]", "-")
-                .replaceAll("-+", "-")
-                .replaceAll("^-|-$", "");
-    }
 
     /**
      * Ensure bucket exists, create if it doesn't

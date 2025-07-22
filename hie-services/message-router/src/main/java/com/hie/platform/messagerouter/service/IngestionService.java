@@ -1,16 +1,17 @@
 package com.hie.platform.messagerouter.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hie.platform.shared.audit.annotation.AuditStep;
 import com.hie.platform.shared.audit.model.MessageState;
 import com.hie.platform.shared.audit.model.MessageStatus;
-import com.hie.platform.shared.audit.repository.MessageStateRepository;
+import com.hie.platform.shared.message.repository.MessageStateRepository;
+import com.hie.platform.shared.message.service.MessageStateService;
 import com.hie.platform.shared.minio.model.FileUploadResult;
 import com.hie.platform.shared.minio.service.MinioService;
 import com.hie.platform.shared.rabbitmq.RabbitMQService;
 import com.hie.platform.shared.rabbitmq.model.QueueMessage;
 
+import com.hie.platform.shared.util.AppConstant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +20,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -27,7 +29,7 @@ import java.util.UUID;
 @Slf4j
 public class IngestionService {
 
-    private final MessageStateRepository messageStateRepository;
+    private final MessageStateService messageStateService;
     private final MinioService minioService;
     private final RabbitMQService rabbitMQService;
     private final ObjectMapper objectMapper;
@@ -36,11 +38,11 @@ public class IngestionService {
     private String serviceName;
 
     @Autowired
-    public IngestionService(MessageStateRepository messageStateRepository,
+    public IngestionService(MessageStateService messageStateService,
                             MinioService minioService,
                             RabbitMQService rabbitMQService,
                             ObjectMapper objectMapper) {
-        this.messageStateRepository = messageStateRepository;
+        this.messageStateService = messageStateService;
         this.minioService = minioService;
         this.rabbitMQService = rabbitMQService;
         this.objectMapper = objectMapper;
@@ -53,12 +55,11 @@ public class IngestionService {
      * 3. Publish message to RabbitMQ processing queue
      */
     @AuditStep(serviceName = "message-router-service", stepName = MessageStatus.PROCESSING)
-    public Mono<String> ingestReactive(String hl7Message) {
+    public Mono<String> ingestReactive(String hl7Message, String messageIdStr, String correlationId) {
         log.debug(" Processing HL7 message in ingest-reactive: {}",
                 hl7Message != null ? hl7Message.substring(0, Math.min(100, hl7Message.length())) + "..." : "null");
 
-        String correlationId = UUID.randomUUID().toString();
-        UUID messageId = UUID.randomUUID();
+        UUID messageId = UUID.fromString(messageIdStr);
         // Extract basic info from HL7 message
         String messageType = extractMessageType(hl7Message);
         String patientId = extractPatientId(hl7Message);
@@ -66,15 +67,15 @@ public class IngestionService {
 
         return uploadToMinio(hl7Message, sourceOrganization, messageId.toString())
                 .flatMap(uploadResult ->
-                        createMessageStateEntry(messageId, correlationId, messageType,
-                                patientId, sourceOrganization, uploadResult)
+                        messageStateService.createMessageStateEntry(messageId, UUID.fromString(correlationId), messageType,
+                                        patientId, sourceOrganization, uploadResult, serviceName)
                                 .flatMap(messageState ->
                                         // Combine messageState and uploadResult for use in next step
-                                        publishToProcessingQueue(messageState, uploadResult, hl7Message)
+                                        rabbitMQService.publishToProcessingQueue(messageState, uploadResult, hl7Message,serviceName,correlationId)
                                                 .map(success -> messageState) // Continue with messageState
                                 )
                                 .flatMap(messageState ->
-                                        updateMessageStateAfterPublish(messageId, correlationId)
+                                        messageStateService.updateMessageStateAfterPublish(messageId, correlationId, serviceName)
                                                 .thenReturn(messageState)
                                 )
                                 .map(messageState -> {
@@ -85,8 +86,8 @@ public class IngestionService {
                 )
                 .onErrorResume(error -> {
                     log.error("Error in processing pipeline for correlationId: {}", correlationId, error);
-                    return createFailedMessageStateEntry(messageId, correlationId, messageType,
-                            patientId, sourceOrganization, error.getMessage())
+                    return messageStateService.createFailedMessageStateEntry(messageId, UUID.fromString(correlationId), messageType,
+                                    patientId, sourceOrganization, error.getMessage(), serviceName)
                             .then(Mono.error(error));
                 });
 
@@ -95,9 +96,8 @@ public class IngestionService {
     /**
      * Process with routing to specific queues based on message type
      */
-    public Mono<String> processWithRouting(String hl7Message, String processingType) {
-        String correlationId = UUID.randomUUID().toString();
-        UUID messageId = UUID.randomUUID();
+    public Mono<String> processWithRouting(String hl7Message, String processingType,String messageIdStr, String correlationId) {
+        UUID messageId = UUID.fromString(messageIdStr);
 
         String messageType = extractMessageType(hl7Message);
         String patientId = extractPatientId(hl7Message);
@@ -105,23 +105,23 @@ public class IngestionService {
 
         return uploadToMinio(hl7Message, sourceOrganization, correlationId)
                 .flatMap(uploadResult ->
-                        createMessageStateEntry(messageId, correlationId, messageType,
-                                patientId, sourceOrganization, uploadResult)
+                        messageStateService.createMessageStateEntry(messageId, UUID.fromString(correlationId), messageType,
+                                        patientId, sourceOrganization, uploadResult, serviceName)
                                 .map(messageState -> Tuples.of(messageState, uploadResult)) // ➕ Carry both forward
                 )
                 .flatMap(tuple -> {
                     MessageState messageState = tuple.getT1();
                     FileUploadResult uploadResult = tuple.getT2();
 
-                    return routeToSpecificQueue(messageState, uploadResult, hl7Message, processingType)
+                    return rabbitMQService.routeToSpecificQueue(messageState, uploadResult, hl7Message, processingType,serviceName,correlationId)
                             .map(success -> messageState); // Forward only messageState
                 })
-                .flatMap(messageState -> updateMessageStateAfterPublish(messageId, correlationId))
+                .flatMap(messageState -> messageStateService.updateMessageStateAfterPublish(messageId, correlationId, serviceName))
                 .map(success -> correlationId)
                 .onErrorResume(error -> {
                     log.error("Error in routing pipeline for correlationId: {}", correlationId, error);
-                    return createFailedMessageStateEntry(messageId, correlationId, messageType,
-                            patientId, sourceOrganization, error.getMessage())
+                    return messageStateService.createFailedMessageStateEntry(messageId, UUID.fromString(correlationId), messageType,
+                                    patientId, sourceOrganization, error.getMessage(), serviceName)
                             .then(Mono.error(error));
                 });
 
@@ -132,8 +132,10 @@ public class IngestionService {
      */
     private Mono<FileUploadResult> uploadToMinio(String hl7Message, String sourceOrganization, String messageId) {
         log.debug("Starting MinIO upload for messageId: {}", messageId);
+        String minioPath = generateStructuredPath(sourceOrganization,"raw", messageId, AppConstant.FILE_EXTENSION_TXT);
+        log.info("Generated MinIO path: {}", minioPath);
 
-        return minioService.uploadFile(hl7Message, sourceOrganization, messageId, "txt", "text/plain")
+        return minioService.uploadFile(hl7Message, sourceOrganization, messageId, "txt", "text/plain",minioPath)
                 .doOnSuccess(result -> log.debug("MinIO upload completed successfully. Path: {}, CorrelationId: {}",
                         result.getMinioPath(), messageId))
                 .doOnError(error -> log.error("MinIO upload failed for correlationId: {}", messageId, error));
@@ -147,226 +149,6 @@ public class IngestionService {
     /**
      * Step 3: Publish message to RabbitMQ processing queue
      */
-    private Mono<Boolean> publishToProcessingQueue(MessageState messageState, FileUploadResult uploadResult,
-                                                   String hl7Message) {
-
-        log.debug("Publishing to processing queue for messageId: {}", messageState.getMessageId());
-
-        // Create additional processing data
-        Map<String, Object> additionalData = createAdditionalProcessingData(hl7Message, uploadResult);
-
-        // Create queue message using the RabbitMQ service helper method
-        QueueMessage queueMessage = rabbitMQService.createHL7ProcessingMessage(
-                messageState.getMessageId().toString(), // Using messageId as correlationId
-                messageState.getSourceOrganization(),
-                messageState.getMessageType(),
-                messageState.getPatientId(),
-                uploadResult.getMinioPath(),
-                uploadResult.getS3Location(),
-                additionalData
-        );
-
-        // Set additional metadata
-        queueMessage.setCreatedAt(LocalDateTime.now());
-        queueMessage.setHeaders(createProcessingHeaders(messageState, uploadResult));
-
-        return rabbitMQService.sendToProcessingQueue(queueMessage)
-                .doOnSuccess(success -> log.debug("Message published successfully to processing queue. MessageId: {}",
-                        messageState.getMessageId()))
-                .doOnError(error -> log.error("Failed to publish message to processing queue. MessageId: {}",
-                        messageState.getMessageId(), error));
-    }
-
-    /**
-     * Route to specific queue based on processing type
-     */
-    private Mono<Boolean> routeToSpecificQueue(MessageState messageState, FileUploadResult uploadResult,
-                                               String hl7Message, String processingType) {
-
-        Map<String, Object> additionalData = createAdditionalProcessingData(hl7Message, uploadResult);
-
-        QueueMessage queueMessage = rabbitMQService.createHL7ProcessingMessage(
-                messageState.getMessageId().toString(),
-                messageState.getSourceOrganization(),
-                messageState.getMessageType(),
-                messageState.getPatientId(),
-                uploadResult.getMinioPath(),
-                uploadResult.getS3Location(),
-                additionalData
-        );
-
-        queueMessage.setCreatedAt(LocalDateTime.now());
-        queueMessage.setHeaders(createProcessingHeaders(messageState, uploadResult));
-
-        // Route based on processing type
-        return switch (processingType.toUpperCase()) {
-            case "VALIDATION" -> rabbitMQService.sendToValidationQueue(queueMessage);
-            case "CONVERSION" -> rabbitMQService.sendToConversionQueue(queueMessage);
-            case "STORAGE" -> rabbitMQService.sendToStorageQueue(queueMessage);
-            case "PROCESSING" -> rabbitMQService.sendToProcessingQueue(queueMessage);
-            default -> {
-                log.warn("Unknown processing type: {}. Routing to default processing queue.", processingType);
-                yield rabbitMQService.sendToProcessingQueue(queueMessage);
-            }
-        };
-    }
-
-    /**
-     * Update message state after successful publishing (REACTIVE)
-     */
-    private Mono<MessageState> updateMessageStateAfterPublish(UUID messageId, String correlationId) {
-        log.debug("Updating message state after successful publish for messageId: {}", messageId);
-
-        return messageStateRepository.findByMessageId(messageId)
-                .flatMap(messageState -> {
-                    log.debug("Existing message state found, updating...");
-
-                    // Update existing fields
-                    messageState.setCurrentStatus(MessageStatus.QUEUED.name());
-                    messageState.setUpdatedAt(LocalDateTime.now());
-                    messageState.setLastProcessedBy(serviceName);
-
-                    return messageStateRepository.save(messageState);
-                })
-                .switchIfEmpty(Mono.error(new RuntimeException("MessageState not found for messageId: " + messageId)));
-
-    }
-
-
-    private Mono<MessageState> createMessageStateEntry(UUID messageId, String correlationId,
-                                                       String messageType, String patientId,
-                                                       String sourceOrganization, FileUploadResult uploadResult) {
-
-        log.debug("Creating or updating message state entry for messageId: {}", messageId);
-
-        return messageStateRepository.findByMessageId(messageId)
-                .flatMap(existing -> {
-                    log.debug("Existing message state found, updating...");
-
-                    // Update existing fields
-                    existing.setCurrentStatus(MessageStatus.PROCESSING.name());
-                    existing.setSourceOrganization(sourceOrganization);
-                    existing.setMessageType(messageType);
-                    existing.setPatientId(patientId);
-                    existing.setS3Location(uploadResult.getS3Location());
-                    existing.setLastProcessedBy(serviceName);
-                    existing.setTotalProcessingTimeMs(0L);
-                    existing.setUpdatedAt(LocalDateTime.now());
-
-                    return messageStateRepository.save(existing);
-                })
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.debug("No existing state found, inserting new message state entry...");
-
-                    MessageState newState = MessageState.builder()
-                            .messageId(messageId)
-                            .currentStatus(MessageStatus.PROCESSING.name())
-                            .sourceOrganization(sourceOrganization)
-                            .messageType(messageType)
-                            .patientId(patientId)
-                            .s3Location(uploadResult.getS3Location())
-                            .lastProcessedBy(serviceName)
-                            .totalProcessingTimeMs(0L)
-                            .createdAt(LocalDateTime.now())
-                            .updatedAt(LocalDateTime.now())
-                            .build();
-
-                    return messageStateRepository.save(newState);
-                }));
-    }
-
-    /**
-     * Create failed message state entry (REACTIVE)
-     */
-    private Mono<MessageState> createFailedMessageStateEntry(UUID messageId, String correlationId,
-                                                             String messageType, String patientId,
-                                                             String sourceOrganization, String errorMessage) {
-
-        log.debug("Creating failed message state entry for messageId: {}", messageId);
-
-
-        return messageStateRepository.findByMessageId(messageId)
-                .flatMap(existing -> {
-                    log.debug("Existing message state found while adding failed message state entry , updating...");
-
-                    // Update existing fields
-                    existing.setCurrentStatus(MessageStatus.FAILED.name());
-                    existing.setSourceOrganization(sourceOrganization);
-                    existing.setMessageType(messageType);
-                    existing.setPatientId(patientId);
-                    existing.setLastProcessedBy(serviceName);
-                    existing.setTotalProcessingTimeMs(0L);
-                    existing.setErrorMessage(errorMessage);
-                    existing.setCreatedAt(LocalDateTime.now());
-                    existing.setUpdatedAt(LocalDateTime.now());
-
-                    log.debug("Updating existing  messageState with id: {}", existing.getId());
-                    return messageStateRepository.save(existing);
-                })
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.debug("No existing state found, inserting new message state entry...");
-
-                    MessageState messageState = MessageState.builder()
-                            .messageId(messageId)
-                            .currentStatus(MessageStatus.FAILED.name())
-                            .sourceOrganization(sourceOrganization)
-                            .messageType(messageType)
-                            .patientId(patientId)
-                            .lastProcessedBy(serviceName)
-                            .totalProcessingTimeMs(0L)
-                            .errorMessage(errorMessage)
-                            .createdAt(LocalDateTime.now())
-                            .updatedAt(LocalDateTime.now())
-                            .build();
-                    log.debug("Saving a new messageState with id: {}", messageState.getId());
-                    return messageStateRepository.save(messageState);
-                }));
-    }
-
-    /**
-     * Create additional processing data for queue message
-     */
-    private Map<String, Object> createAdditionalProcessingData(String hl7Message, FileUploadResult uploadResult) {
-        Map<String, Object> additionalData = new HashMap<>();
-
-        // File metadata
-        additionalData.put("fileSize", uploadResult.getFileSize());
-        additionalData.put("contentType", uploadResult.getContentType());
-        additionalData.put("uploadedAt", uploadResult.getUploadedAt().toString());
-        additionalData.put("bucketName", uploadResult.getBucketName());
-
-        // Message metadata
-        if (hl7Message != null) {
-            additionalData.put("hl7MessageLength", hl7Message.length());
-            additionalData.put("hl7Preview", hl7Message.length() > 500 ?
-                    hl7Message.substring(0, 500) + "..." : hl7Message);
-        }
-
-        // Processing metadata
-        additionalData.put("processedBy", serviceName);
-        additionalData.put("processedAt", LocalDateTime.now().toString());
-        additionalData.put("ingestionTimestamp", LocalDateTime.now().toString());
-
-        return additionalData;
-    }
-
-    /**
-     * Create processing headers for queue message
-     */
-    private Map<String, String> createProcessingHeaders(MessageState messageState, FileUploadResult uploadResult) {
-        Map<String, String> headers = new HashMap<>();
-
-        headers.put("messageId", messageState.getMessageId().toString());
-        headers.put("messageType", messageState.getMessageType());
-        headers.put("sourceOrganization", messageState.getSourceOrganization());
-        headers.put("patientId", messageState.getPatientId() != null ? messageState.getPatientId() : "");
-        headers.put("s3Location", uploadResult.getS3Location());
-        headers.put("minioPath", uploadResult.getMinioPath());
-        headers.put("processedBy", serviceName);
-        headers.put("ingestionTimestamp", LocalDateTime.now().toString());
-
-        return headers;
-    }
 
     // HL7 parsing utility methods
     private String extractMessageType(String hl7Message) {
@@ -420,10 +202,37 @@ public class IngestionService {
         return "UNKNOWN";
     }
 
-    // Legacy method for backward compatibility
-    @Deprecated
-    public String ingest(String hl7Message) {
-        log.debug("Legacy ingest() method called - delegating to reactive version");
-        return ingestReactive(hl7Message).block();
+    private String generateStructuredPath(String organizationId,String queueType, String messageId, String fileExtension) {
+        LocalDateTime now = LocalDateTime.now();
+        String year = now.format(DateTimeFormatter.ofPattern("yyyy"));
+        String month = now.format(DateTimeFormatter.ofPattern("MMM"));
+
+        String day = now.format(DateTimeFormatter.ofPattern("dd"));
+
+        String sanitizedOrgId = sanitizeOrganizationId(organizationId);
+        String extension = fileExtension.startsWith(".") ? fileExtension : "." + fileExtension;
+
+        return String.format("%s/%s/%s/%s/%s/%s%s", sanitizedOrgId, queueType, year, month, day, messageId, extension);
     }
+
+    /**
+     * Generate structured MinIO path: organization-id/year/month/day/correlationId.ext
+     */
+
+
+    /**
+     * Sanitize organization ID for filesystem safety
+     */
+    private String sanitizeOrganizationId(String organizationId) {
+        if (organizationId == null || organizationId.trim().isEmpty()) {
+            return "unknown-org";
+        }
+
+        return organizationId.trim()
+                .toLowerCase()
+                .replaceAll("[^a-z0-9\\-_]", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
+    }
+
 }
