@@ -1,4 +1,4 @@
-package com.hie.platform.gateway.utils;
+package com.hie.platform.shared.util;
 
 /**
  * @author mismail
@@ -15,3 +15,4 @@ public class AppConstant {
     public static final String PATIENT_ID_HEADER = "X-Patient-ID";
     public static final String GLOBAL_PATIENT_ID_HEADER = "X-Global-Patient-ID";
 }
+

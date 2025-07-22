@@ -49,7 +49,7 @@ public class IngestionService {
     /**
      * Complete reactive ingestion pipeline:
      * 1. Upload HL7 message to MinIO
-     * 2. Create entry in MessageState table
+     * 2. Create entry in MessageState table.
      * 3. Publish message to RabbitMQ processing queue
      */
     @AuditStep(serviceName = "message-router-service", stepName = MessageStatus.PROCESSING)

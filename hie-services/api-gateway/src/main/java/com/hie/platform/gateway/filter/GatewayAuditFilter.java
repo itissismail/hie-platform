@@ -1,6 +1,6 @@
 package com.hie.platform.gateway.filter;
 
-import com.hie.platform.gateway.utils.AppConstant;
+import com.hie.platform.shared.util.AppConstant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;

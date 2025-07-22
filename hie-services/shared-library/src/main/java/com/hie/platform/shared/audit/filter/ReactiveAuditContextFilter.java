@@ -1,9 +1,11 @@
 package com.hie.platform.shared.audit.filter;
 
 import com.hie.platform.shared.audit.context.ReactiveAuditContext;
+import com.hie.platform.shared.util.AppConstant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -22,13 +24,13 @@ import java.util.UUID;
 @Slf4j
 public class ReactiveAuditContextFilter implements WebFilter {
 
-    private static final String MESSAGE_ID_HEADER = "X-Message-ID";
+/*    private static final String MESSAGE_ID_HEADER = "X-Message-ID";
     private static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
     private static final String SERVICE_NAME_HEADER = "X-Service-Name";
     private static final String SOURCE_ORGANIZATION_HEADER = "X-Source-Organization";
     private static final String MESSAGE_TYPE_HEADER = "X-Message-Type";
     private static final String PATIENT_ID_HEADER = "X-Patient-ID";
-    private static final String GLOBAL_PATIENT_ID_HEADER = "X-Global-Patient-ID";
+    private static final String GLOBAL_PATIENT_ID_HEADER = "X-Global-Patient-ID";*/
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
@@ -38,14 +40,26 @@ public class ReactiveAuditContextFilter implements WebFilter {
                             auditContext.getMessageId(), auditContext.getCorrelationId());
 
                     // Add response headers for downstream services
-                    exchange.getResponse().getHeaders().add(MESSAGE_ID_HEADER, auditContext.getMessageId().toString());
-                    exchange.getResponse().getHeaders().add(CORRELATION_ID_HEADER, auditContext.getCorrelationId().toString());
+                    exchange.getResponse().getHeaders().add(AppConstant.MESSAGE_ID_HEADER, auditContext.getMessageId().toString());
+                    exchange.getResponse().getHeaders().add(AppConstant.CORRELATION_ID_HEADER, auditContext.getCorrelationId().toString());
+
+                    log.debug("Add to REQUEST headers for downstream filters/gateway");
+                    // Add to REQUEST headers for downstream filters/gateway
+                    ServerHttpRequest modifiedRequest = exchange.getRequest().mutate()
+                            .header(AppConstant.CORRELATION_ID_HEADER, auditContext.getCorrelationId().toString())
+                            .header(AppConstant.MESSAGE_ID_HEADER, auditContext.getMessageId().toString())
+                            .header(AppConstant.SERVICE_NAME_HEADER, auditContext.getServiceName())
+                            .build();
+
+                    ServerWebExchange modifiedExchange = exchange.mutate()
+                            .request(modifiedRequest)
+                            .build();
 
                     if (auditContext.getServiceName() != null) {
-                        exchange.getResponse().getHeaders().add(SERVICE_NAME_HEADER, auditContext.getServiceName());
+                        exchange.getResponse().getHeaders().add(AppConstant.SERVICE_NAME_HEADER, auditContext.getServiceName());
                     }
 
-                    return chain.filter(exchange)
+                    return chain.filter(modifiedExchange)
                             .contextWrite(auditContext.toReactorContext());
                 })
                 .doOnError(error -> log.error("Error in audit context filter", error))
@@ -54,13 +68,13 @@ public class ReactiveAuditContextFilter implements WebFilter {
 
     private Mono<ReactiveAuditContext> extractAuditContext(ServerWebExchange exchange) {
         return Mono.fromSupplier(() -> {
-            String messageIdStr = exchange.getRequest().getHeaders().getFirst(MESSAGE_ID_HEADER);
-            String correlationIdStr = exchange.getRequest().getHeaders().getFirst(CORRELATION_ID_HEADER);
-            String serviceName = exchange.getRequest().getHeaders().getFirst(SERVICE_NAME_HEADER);
-            String sourceOrganization = exchange.getRequest().getHeaders().getFirst(SOURCE_ORGANIZATION_HEADER);
-            String messageType = exchange.getRequest().getHeaders().getFirst(MESSAGE_TYPE_HEADER);
-            String patientId = exchange.getRequest().getHeaders().getFirst(PATIENT_ID_HEADER);
-            String globalPatientId = exchange.getRequest().getHeaders().getFirst(GLOBAL_PATIENT_ID_HEADER);
+            String messageIdStr = exchange.getRequest().getHeaders().getFirst(AppConstant.MESSAGE_ID_HEADER);
+            String correlationIdStr = exchange.getRequest().getHeaders().getFirst(AppConstant.CORRELATION_ID_HEADER);
+            String serviceName = exchange.getRequest().getHeaders().getFirst(AppConstant.SERVICE_NAME_HEADER);
+            String sourceOrganization = exchange.getRequest().getHeaders().getFirst(AppConstant.SOURCE_ORGANIZATION_HEADER);
+            String messageType = exchange.getRequest().getHeaders().getFirst(AppConstant.MESSAGE_TYPE_HEADER);
+            String patientId = exchange.getRequest().getHeaders().getFirst(AppConstant.PATIENT_ID_HEADER);
+            String globalPatientId = exchange.getRequest().getHeaders().getFirst(AppConstant.GLOBAL_PATIENT_ID_HEADER);
 
             // Generate UUIDs if not provided
             UUID messageId;
