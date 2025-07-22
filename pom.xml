@@ -10,14 +10,14 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>./hie-services/shared-library</module>
-        <module>./hie-services/api-gateway</module>
-        <module>./hie-services/message-router</module>
-        <module>./hie-services/validation-service</module>
-        <module>./hie-services/intake-service</module>
-        <module>./hie-services/conversion-service</module>
-        <module>./hie-services/storage-service</module>
-        <module>./hie-services/auth-service</module>
+        <module>hie-services/shared-library</module>
+        <module>hie-services/api-gateway</module>
+        <module>hie-services/message-router</module>
+        <module>hie-services/validation-service</module>
+        <module>hie-services/intake-service</module>
+        <module>hie-services/conversion-service</module>
+        <module>hie-services/storage-service</module>
+        <module>hie-services/auth-service</module>
     </modules>
 
     <properties>

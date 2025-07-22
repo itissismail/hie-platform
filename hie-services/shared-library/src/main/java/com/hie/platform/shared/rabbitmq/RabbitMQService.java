@@ -1,7 +1,3 @@
-// ============================================================================
-// 2. RabbitMQ Service Wrapper
-// ============================================================================
-
 package com.hie.platform.shared.rabbitmq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +6,7 @@ import com.hie.platform.shared.rabbitmq.model.QueueMessage;
 import com.hie.platform.shared.rabbitmq.exception.RabbitMQServiceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +32,11 @@ public class RabbitMQService {
         this.rabbitTemplate = rabbitTemplate;
         this.objectMapper = objectMapper;
         this.rabbitMQProperties = rabbitMQProperties;
+
+        // Log configuration on startup
+        log.info("RabbitMQ Service initialized with persistence: {}, durable: {}",
+                rabbitMQProperties.getMessageSettings().isPersistent(),
+                rabbitMQProperties.getMessageSettings().isDurable());
     }
 
     /**
@@ -80,7 +82,7 @@ public class RabbitMQService {
     }
 
     /**
-     * Generic send message method
+     * Generic send message method with PROPER persistence
      */
     private Mono<Boolean> sendMessage(QueueMessage queueMessage, String queueName) {
         return Mono.fromCallable(() -> {
@@ -96,36 +98,55 @@ public class RabbitMQService {
                 // Convert to JSON
                 String jsonPayload = objectMapper.writeValueAsString(queueMessage);
 
-                // Create message properties
+                // Create message properties with PERSISTENT delivery mode
                 MessageProperties properties = new MessageProperties();
                 properties.setContentType("application/json");
-                //properties.setDeliveryMode(MessageProperties.DELIVERY_MODE_PERSISTENT);
-                properties.setDeliveryMode(MessageProperties.DEFAULT_DELIVERY_MODE);
+
+                // CRITICAL: Set delivery mode to PERSISTENT for durability
+                if (rabbitMQProperties.getMessageSettings().isPersistent()) {
+                    properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
+                    log.debug("Message set to PERSISTENT mode");
+                } else {
+                    properties.setDeliveryMode(MessageDeliveryMode.NON_PERSISTENT);
+                    log.debug("Message set to NON_PERSISTENT mode");
+                }
+
                 properties.setMessageId(queueMessage.getMessageId());
                 properties.setCorrelationId(queueMessage.getCorrelationId());
                 properties.setTimestamp(java.util.Date.from(
                         queueMessage.getSentAt().atZone(java.time.ZoneId.systemDefault()).toInstant()));
 
+                // Add custom headers for tracking
+                properties.setHeader("sent-by", queueMessage.getSentBy());
+                properties.setHeader("retry-count", queueMessage.getRetryCount());
+                properties.setHeader("max-retries", queueMessage.getMaxRetries());
+
+                // Set message expiration if TTL is configured
+                if (rabbitMQProperties.getMessageSettings().getMessageTtl() > 0) {
+                    properties.setExpiration(String.valueOf(rabbitMQProperties.getMessageSettings().getMessageTtl()));
+                }
+
                 // Create message
                 Message message = new Message(jsonPayload.getBytes(), properties);
 
-                // Send message
+                // Send message directly to queue (not through exchange)
                 rabbitTemplate.send(queueName, message);
 
-                log.debug("Message sent successfully to queue: {} with correlationId: {}",
-                        queueName, queueMessage.getCorrelationId());
+                log.info("Message sent successfully to queue: {} with messageId: {}, correlationId: {}, persistent: {}",
+                        queueName, queueMessage.getMessageId(), queueMessage.getCorrelationId(),
+                        rabbitMQProperties.getMessageSettings().isPersistent());
 
                 return true;
             } catch (Exception e) {
-                log.error("Failed to send message to queue: {} with correlationId: {}",
-                        queueName, queueMessage.getCorrelationId(), e);
+                log.error("Failed to send message to queue: {} with messageId: {}, correlationId: {}",
+                        queueName, queueMessage.getMessageId(), queueMessage.getCorrelationId(), e);
                 throw new RabbitMQServiceException("Failed to send message to queue: " + queueName, e);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
-     * Send message to exchange with routing key
+     * Send message to exchange with routing key and PROPER persistence
      */
     private Mono<Boolean> sendMessage(QueueMessage queueMessage, String exchangeName, String routingKey) {
         return Mono.fromCallable(() -> {
@@ -141,35 +162,50 @@ public class RabbitMQService {
 
                 MessageProperties properties = new MessageProperties();
                 properties.setContentType("application/json");
-                properties.setDeliveryMode(MessageProperties.DEFAULT_DELIVERY_MODE);
+
+                // CRITICAL: Set delivery mode to PERSISTENT
+                if (rabbitMQProperties.getMessageSettings().isPersistent()) {
+                    properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
+                } else {
+                    properties.setDeliveryMode(MessageDeliveryMode.NON_PERSISTENT);
+                }
+
                 properties.setMessageId(queueMessage.getMessageId());
                 properties.setCorrelationId(queueMessage.getCorrelationId());
+                properties.setTimestamp(java.util.Date.from(
+                        queueMessage.getSentAt().atZone(java.time.ZoneId.systemDefault()).toInstant()));
+
+                // Add routing and tracking headers
+                properties.setHeader("sent-by", queueMessage.getSentBy());
+                properties.setHeader("routing-key", routingKey);
 
                 Message message = new Message(jsonPayload.getBytes(), properties);
 
                 rabbitTemplate.send(exchangeName, routingKey, message);
 
-                log.debug("Message sent successfully to exchange: {} with routingKey: {} and correlationId: {}",
-                        exchangeName, routingKey, queueMessage.getCorrelationId());
+                log.info("Message sent successfully to exchange: {} with routingKey: {}, messageId: {}, correlationId: {}, persistent: {}",
+                        exchangeName, routingKey, queueMessage.getMessageId(), queueMessage.getCorrelationId(),
+                        rabbitMQProperties.getMessageSettings().isPersistent());
 
                 return true;
             } catch (Exception e) {
-                log.error("Failed to send message to exchange: {} with routingKey: {} and correlationId: {}",
-                        exchangeName, routingKey, queueMessage.getCorrelationId(), e);
+                log.error("Failed to send message to exchange: {} with routingKey: {}, messageId: {}, correlationId: {}",
+                        exchangeName, routingKey, queueMessage.getMessageId(), queueMessage.getCorrelationId(), e);
                 throw new RabbitMQServiceException("Failed to send message to exchange", e);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
-     * Create HL7 message for processing queue
+     * Create HL7 message for processing queue with proper IDs
      */
     public QueueMessage createHL7ProcessingMessage(String correlationId, String organizationId,
                                                    String messageType, String patientId,
                                                    String minioPath, String s3Location,
                                                    Map<String, Object> additionalData) {
         return QueueMessage.builder()
-                .correlationId(correlationId)
+                .messageId(UUID.randomUUID().toString())  // Unique per message
+                .correlationId(correlationId)             // Shared across related messages
                 .messageType("HL7_PROCESSING")
                 .payload(Map.of(
                         "organizationId", organizationId,
@@ -181,7 +217,22 @@ public class RabbitMQService {
                 ))
                 .priority(1)
                 .retryCount(0)
-                .maxRetries(3)
+                .maxRetries(rabbitMQProperties.getMessageSettings().getMaxRetries())
                 .build();
+    }
+
+    /**
+     * Create a new correlation ID for a business transaction
+     */
+    public String generateCorrelationId() {
+        return UUID.randomUUID().toString();
+    }
+
+    /**
+     * Check if RabbitMQ is configured for persistence
+     */
+    public boolean isPersistenceEnabled() {
+        return rabbitMQProperties.getMessageSettings().isPersistent() &&
+                rabbitMQProperties.getMessageSettings().isDurable();
     }
 }

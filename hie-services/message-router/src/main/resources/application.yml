@@ -13,7 +13,7 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:admin}
     password: ${RABBITMQ_PASSWORD:admin123}
-    virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
+    virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
 
   datasource:
     url: jdbc:postgresql://localhost:5432/hie_platform
@@ -52,7 +52,7 @@ rabbitmq:
   port: ${RABBITMQ_PORT:5672}
   username: ${RABBITMQ_USERNAME:admin}
   password: ${RABBITMQ_PASSWORD:admin123}
-  virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
+  virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
   exchange-name: ${RABBITMQ_EXCHANGE_NAME:hl7-processing-exchange}
   service-name: ${RABBITMQ_SERVICE_NAME:message-router-service}
 
@@ -74,6 +74,7 @@ rabbitmq:
     max-retries: ${RABBITMQ_MAX_RETRIES:3}
     durable: ${RABBITMQ_DURABLE:true}
     persistent: ${RABBITMQ_PERSISTENT:true}
+
 
 # Logging Configuration
 logging:

@@ -17,20 +17,34 @@ services:
     networks:
       - hie-network
 
-  # RabbitMQ Message Queue
+  # RabbitMQ Message Queue with Persistence
   rabbitmq:
     image: rabbitmq:3-management
     container_name: hie-rabbitmq
+    hostname: hie-rabbitmq
     environment:
+      # Only use non-deprecated environment variables
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
+      RABBITMQ_DEFAULT_VHOST: hie-vhost
     ports:
       - "5672:5672"
       - "15672:15672"
     volumes:
+      # Mount data directory for persistence
       - rabbitmq_data:/var/lib/rabbitmq
+      # Mount minimal config file
+      - ./rabbitmq-config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
     networks:
       - hie-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 60s
+    stop_grace_period: 30s
+    restart: unless-stopped
 
   # Redis Cache
   redis:
@@ -145,6 +159,9 @@ services:
 volumes:
   postgres_data:
   rabbitmq_data:
+    driver: local
+  rabbitmq_logs:  # Added for RabbitMQ log persistence
+    driver: local
   redis_data:
   minio_data:
   prometheus_data:
