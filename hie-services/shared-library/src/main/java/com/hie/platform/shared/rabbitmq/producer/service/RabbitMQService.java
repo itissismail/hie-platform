@@ -12,7 +12,6 @@ import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -65,7 +64,7 @@ public class RabbitMQService {
 
         // Set additional metadata
         queueMessage.setCreatedAt(LocalDateTime.now());
-        queueMessage.setHeaders(createProcessingHeaders(messageState, uploadResult,serviceName));
+        queueMessage.setCustomHeaders(createProcessingHeaders(messageState, uploadResult,serviceName,correlationId));
 
         return this.sendToProcessingQueue(queueMessage)
                 .doOnSuccess(success -> log.debug("Message published successfully to processing queue. MessageId: {}",
@@ -93,7 +92,7 @@ public class RabbitMQService {
         );
 
         queueMessage.setCreatedAt(LocalDateTime.now());
-        queueMessage.setHeaders(createProcessingHeaders(messageState, uploadResult,serviceName));
+        queueMessage.setCustomHeaders(createProcessingHeaders(messageState, uploadResult,serviceName));
 
         // Route based on processing type
         return switch (processingType.toUpperCase()) {
@@ -339,19 +338,20 @@ public class RabbitMQService {
     /**
      * Create processing headers for queue message
      */
-    private Map<String, String> createProcessingHeaders(MessageState messageState, FileUploadResult uploadResult, String serviceName) {
-        Map<String, String> headers = new HashMap<>();
+    private Map<String, Object> createProcessingHeaders(MessageState messageState, FileUploadResult uploadResult, String serviceName,String correlationId) {
+        Map<String, Object> customHeaders = new HashMap<>();
 
-        headers.put("messageId", messageState.getMessageId().toString());
-        headers.put("messageType", messageState.getMessageType());
-        headers.put("sourceOrganization", messageState.getSourceOrganization());
-        headers.put("patientId", messageState.getPatientId() != null ? messageState.getPatientId() : "");
-        headers.put("s3Location", uploadResult.getS3Location());
-        headers.put("minioPath", uploadResult.getMinioPath());
-        headers.put("processedBy", serviceName);
-        headers.put("ingestionTimestamp", LocalDateTime.now().toString());
+        customHeaders.put("messageId", messageState.getMessageId().toString());
+        customHeaders.put("messageType", messageState.getMessageType());
+        customHeaders.put("sourceOrganization", messageState.getSourceOrganization());
+        customHeaders.put("patientId", messageState.getPatientId() != null ? messageState.getPatientId() : "");
+        customHeaders.put("s3Location", uploadResult.getS3Location());
+        customHeaders.put("minioPath", uploadResult.getMinioPath());
+        customHeaders.put("processedBy", serviceName);
+        customHeaders.put("ingestionTimestamp", LocalDateTime.now().toString());
+        customHeaders.put("correlationId",correlationId);
 
-        return headers;
+        return customHeaders;
     }
 
 }

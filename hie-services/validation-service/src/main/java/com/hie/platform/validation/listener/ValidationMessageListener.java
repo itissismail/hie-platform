@@ -26,9 +26,9 @@ public class ValidationMessageListener {
     private final ObjectMapper objectMapper;
 
     @RabbitListener(queues = "${rabbitmq.queues.hl7-processing}")
-    public void receiveRawMessage(String jsonMessage) {
+    public void receiveRawMessage(QueueMessage message) {
         try {
-            QueueMessage message = objectMapper.readValue(jsonMessage, QueueMessage.class);
+            //QueueMessage message = objectMapper.readValue(jsonMessage, QueueMessage.class);
             log.info("Received HL7 message for validation: {}", message.getMessageId());
 
             // Perform validation logic

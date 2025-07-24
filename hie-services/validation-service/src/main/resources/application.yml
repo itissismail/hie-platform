@@ -11,7 +11,7 @@ spring:
     username: ${RABBITMQ_USERNAME:admin}
     password: ${RABBITMQ_PASSWORD:admin123}
     virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
-    
+
   # Database Configuration
   # R2DBC Configuration for Reactive Database Access
   r2dbc:
@@ -38,7 +38,7 @@ rabbitmq:
 
   # Queue Names
   queues:
-    hl7-processing: ${RABBITMQ_QUEUE_HL7_PROCESSING:hl7-processing-raw}
+    hl7-processing: ${RABBITMQ_QUEUE_PROCESSING:hl7-raw-processing-queue}
     hl7-validation: ${RABBITMQ_QUEUE_HL7_VALIDATION:hl7-validation}
     hl7-conversion: ${RABBITMQ_QUEUE_HL7_CONVERSION:hl7-conversion}
     hl7-storage: ${RABBITMQ_QUEUE_HL7_STORAGE:hl7-storage}

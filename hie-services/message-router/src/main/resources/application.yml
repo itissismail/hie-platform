@@ -15,16 +15,6 @@ spring:
     password: ${RABBITMQ_PASSWORD:admin123}
     virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
 
-#  datasource:
-#    url: jdbc:postgresql://localhost:5432/hie_platform
-#    username: hie_user
-#    password: hie_password
-#    driver-class-name: org.postgresql.Driver
-#  jpa:
-#    hibernate:
-#      ddl-auto: validate
-#    show-sql: false
-
   # R2DBC Configuration for Reactive Database Access
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/hie_platform
