@@ -227,4 +227,8 @@ public class MinioService {
             log.info("Created MinIO bucket: {}", minioProperties.getBucketName());
         }
     }
+
+    public byte[] downloadFile(String minioPath) {
+        return null;
+    }
 }

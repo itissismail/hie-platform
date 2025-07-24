@@ -1,18 +1,25 @@
-package com.hie.platform.shared.rabbitmq.config;
+package com.hie.platform.shared.rabbitmq.producer.config;
 
-import com.hie.platform.shared.rabbitmq.config.RabbitMQProperties;
+import com.hie.platform.shared.rabbitmq.common.RabbitMQProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @RequiredArgsConstructor
-public class RabbitMQConfig {
+@ConditionalOnProperty(name = "rabbitmq.producer.enabled", havingValue = "true")
+@EnableConfigurationProperties(RabbitMQProperties.class)
 
+public class RabbitMQProducerConfig {
+
+    @Autowired
     private final RabbitMQProperties rabbitMQProperties;
 
     @Bean

@@ -1,5 +1,6 @@
-package com.hie.platform.shared.rabbitmq.config;
+package com.hie.platform.shared.rabbitmq.producer.config;
 
+import com.hie.platform.shared.rabbitmq.common.RabbitMQProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;

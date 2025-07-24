@@ -15,15 +15,15 @@ spring:
     password: ${RABBITMQ_PASSWORD:admin123}
     virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
 
-  datasource:
-    url: jdbc:postgresql://localhost:5432/hie_platform
-    username: hie_user
-    password: hie_password
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    show-sql: false
+#  datasource:
+#    url: jdbc:postgresql://localhost:5432/hie_platform
+#    username: hie_user
+#    password: hie_password
+#    driver-class-name: org.postgresql.Driver
+#  jpa:
+#    hibernate:
+#      ddl-auto: validate
+#    show-sql: false
 
   # R2DBC Configuration for Reactive Database Access
   r2dbc:
@@ -55,6 +55,8 @@ rabbitmq:
   virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
   exchange-name: ${RABBITMQ_EXCHANGE_NAME:hl7-processing-exchange}
   service-name: ${RABBITMQ_SERVICE_NAME:message-router-service}
+  producer:
+    enabled: true
 
   queues:
     hl7-processing: ${RABBITMQ_QUEUE_PROCESSING:hl7-raw-processing-queue}

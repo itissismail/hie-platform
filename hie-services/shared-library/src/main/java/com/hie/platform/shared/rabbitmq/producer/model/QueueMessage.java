@@ -1,4 +1,4 @@
-package com.hie.platform.shared.rabbitmq.model;
+package com.hie.platform.shared.rabbitmq.producer.model;
 
 import lombok.Builder;
 import lombok.Data;
@@ -18,5 +18,10 @@ public class QueueMessage {
     private LocalDateTime createdAt;
     private LocalDateTime sentAt;
     private String sentBy;
+    private String lastError;
+    private LocalDateTime lastRetryAt;
+    private LocalDateTime failedAt;
     private Map<String, String> headers;
+
+
 }

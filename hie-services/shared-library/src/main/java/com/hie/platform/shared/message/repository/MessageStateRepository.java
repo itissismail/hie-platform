@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
 import java.util.UUID;
 
 @Repository
+//public interface MessageStateRepository extends ReactiveCrudRepository<MessageState, UUID> {
 public interface MessageStateRepository extends R2dbcRepository<MessageState, Long> {
 
     Mono<MessageState> findByMessageId(UUID messageId);

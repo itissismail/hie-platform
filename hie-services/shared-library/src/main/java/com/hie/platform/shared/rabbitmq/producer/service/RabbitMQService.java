@@ -1,17 +1,18 @@
-package com.hie.platform.shared.rabbitmq;
+package com.hie.platform.shared.rabbitmq.producer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hie.platform.shared.audit.model.MessageState;
 import com.hie.platform.shared.minio.model.FileUploadResult;
-import com.hie.platform.shared.rabbitmq.config.RabbitMQProperties;
-import com.hie.platform.shared.rabbitmq.model.QueueMessage;
-import com.hie.platform.shared.rabbitmq.exception.RabbitMQServiceException;
+import com.hie.platform.shared.rabbitmq.common.RabbitMQProperties;
+import com.hie.platform.shared.rabbitmq.producer.model.QueueMessage;
+import com.hie.platform.shared.rabbitmq.producer.exception.RabbitMQServiceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -21,7 +22,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-@Service
+
+@Service("rabbitMQService")
 @Slf4j
 public class RabbitMQService {
 
@@ -31,7 +33,7 @@ public class RabbitMQService {
 
     @Autowired
     public RabbitMQService(RabbitTemplate rabbitTemplate, ObjectMapper objectMapper,
-                           RabbitMQProperties rabbitMQProperties) {
+                           RabbitMQProperties rabbitMQProperties){
         this.rabbitTemplate = rabbitTemplate;
         this.objectMapper = objectMapper;
         this.rabbitMQProperties = rabbitMQProperties;
@@ -43,7 +45,7 @@ public class RabbitMQService {
     }
 
     public Mono<Boolean> publishToProcessingQueue(MessageState messageState, FileUploadResult uploadResult,
-                                                   String hl7Message, String serviceName,String correlationId) {
+                                                  String hl7Message, String serviceName,String correlationId) {
 
         log.debug("Publishing to processing queue for messageId: {}", messageState.getMessageId());
 
@@ -76,7 +78,7 @@ public class RabbitMQService {
      * Route to specific queue based on processing type
      */
     public Mono<Boolean> routeToSpecificQueue(MessageState messageState, FileUploadResult uploadResult,
-                                               String hl7Message, String processingType, String serviceName, String correlationId) {
+                                              String hl7Message, String processingType, String serviceName, String correlationId) {
 
         Map<String, Object> additionalData = createAdditionalProcessingData(hl7Message, uploadResult,serviceName);
 

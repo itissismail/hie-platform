@@ -1,12 +1,14 @@
-package com.hie.platform.shared.rabbitmq.config;
+package com.hie.platform.shared.rabbitmq.common;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
+
 
 @Data
-@Configuration
 @ConfigurationProperties(prefix = "rabbitmq")
+
 public class RabbitMQProperties {
     private String host;
     private int port;
@@ -18,6 +20,7 @@ public class RabbitMQProperties {
     private QueueNames queues = new QueueNames();
     private RoutingKeys routingKeys = new RoutingKeys();
     private MessageSettings messageSettings = new MessageSettings();
+
 
     @Data
     public static class QueueNames {
@@ -43,4 +46,5 @@ public class RabbitMQProperties {
         private boolean durable = true;
         private boolean persistent = true;
     }
+
 }

@@ -20,7 +20,11 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @Configuration
 @EnableAsync
 @EnableR2dbcAuditing
-@EnableR2dbcRepositories(basePackages = "com.hie.platform.shared.audit.repository")
+//@EnableR2dbcRepositories(basePackages = "com.hie.platform.shared.audit.repository")
+@EnableR2dbcRepositories(basePackages = {
+        "com.hie.platform.shared.message.repository",
+        "com.hie.platform.shared.audit.repository"
+})
 @ComponentScan(basePackages = "com.hie.platform.shared")
 @EnableConfigurationProperties(AuditProperties.class)
 @ConditionalOnProperty(name = "hie.audit.database.enabled", havingValue = "true", matchIfMissing = true)
