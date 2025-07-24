@@ -92,7 +92,7 @@ public class RabbitMQService {
         );
 
         queueMessage.setCreatedAt(LocalDateTime.now());
-        queueMessage.setCustomHeaders(createProcessingHeaders(messageState, uploadResult,serviceName));
+        queueMessage.setCustomHeaders(createProcessingHeaders(messageState, uploadResult,serviceName,correlationId));
 
         // Route based on processing type
         return switch (processingType.toUpperCase()) {
