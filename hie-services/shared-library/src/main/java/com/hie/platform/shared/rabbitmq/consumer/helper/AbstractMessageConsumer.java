@@ -65,7 +65,8 @@ public abstract class AbstractMessageConsumer {
 
             // Process the message using the provided processor
             MessageProcessor processor = getMessageProcessor();
-            ProcessingResult result = processor.processMessage(queueMessage, messageContent);
+            ProcessingResult result = processor.processMessage(queueMessage);
+            //ProcessingResult result = processor.processMessage(queueMessage, messageContent);
 
             if (result.isSuccess()) {
                 // Handle successful processing

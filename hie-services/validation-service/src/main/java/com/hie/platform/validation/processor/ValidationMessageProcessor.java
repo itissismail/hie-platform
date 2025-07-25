@@ -9,6 +9,7 @@ import com.hie.platform.shared.rabbitmq.producer.model.QueueMessage;
 import com.hie.platform.validation.service.HL7ValidationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -48,8 +49,10 @@ public class ValidationMessageProcessor implements MessageProcessor {
     private final RabbitMQConsumerConfig rabbitMQConsumerConfig;
 
     @Override
-    public ProcessingResult processMessage(QueueMessage queueMessage, String messageContent) {
+    @RabbitListener(queues = "${rabbitmq.queues.hl7-processing}")
+    public ProcessingResult processMessage(QueueMessage queueMessage) {
         try {
+            String messageContent="";
             log.info("Starting HL7 validation - MessageId: {}", queueMessage.getMessageId());
 
             // Extract metadata from payload
@@ -57,7 +60,7 @@ public class ValidationMessageProcessor implements MessageProcessor {
             String organizationId = (String) payload.get("organizationId");
             String hl7MessageType = (String) payload.get("hl7MessageType");
             String patientId = (String) payload.get("patientId");
-
+            messageContent = (String) payload.get("s3Location");
             log.debug("Processing HL7 validation - OrganizationId: {}, MessageType: {}, PatientId: {}",
                     organizationId, hl7MessageType, patientId);
 
@@ -67,7 +70,7 @@ public class ValidationMessageProcessor implements MessageProcessor {
             }
 
             // Perform HL7 validation using the validation service
-            boolean validationSuccess = hl7ValidationService.validateHL7Message(queueMessage, messageContent);
+            boolean validationSuccess = hl7ValidationService.validateHL7Message(queueMessage);
 
             if (validationSuccess) {
                 log.info("HL7 validation successful - MessageId: {}", queueMessage.getMessageId());

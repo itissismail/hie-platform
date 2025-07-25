@@ -119,6 +119,7 @@ validation:
 
     # Supported HL7 message types for validation
     supported-message-types:
+      - ADT  # For Now Allow Generic Message
       - ADT^A01
       - ADT^A02
       - ADT^A03

@@ -29,7 +29,7 @@ public class HL7ValidationService {
     /**
      * Validate HL7 message from queue
      */
-    public boolean validateHL7Message(QueueMessage queueMessage,String messageContent) {
+    public boolean validateHL7Message(QueueMessage queueMessage) {
         try {
             log.info("Starting HL7 validation - MessageId: {}", queueMessage.getMessageId());
 
