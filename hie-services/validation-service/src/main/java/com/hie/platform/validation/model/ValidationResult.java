@@ -1,14 +1,17 @@
 package com.hie.platform.validation.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.Builder;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.ArrayList;
 
+/**
+ * Result of HL7 validation process
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -25,31 +28,83 @@ public class ValidationResult {
     @Builder.Default
     private List<ValidationError> errors = new ArrayList<>();
 
-    @Builder.Default
-    private List<ValidationError> warnings = new ArrayList<>();
-
-    private String summary;
     private int errorCount;
     private int warningCount;
 
+    // Additional metadata
+    private String validatedBy;
+    private String validationVersion;
+    private String messageId;
+
+    /**
+     * Check if validation has any errors (severity = ERROR)
+     */
+    public boolean hasErrors() {
+        return errors.stream().anyMatch(error -> "ERROR".equals(error.getSeverity()));
+    }
+
+    /**
+     * Check if validation has any warnings (severity = WARNING)
+     */
+    public boolean hasWarnings() {
+        return errors.stream().anyMatch(error -> "WARNING".equals(error.getSeverity()));
+    }
+
+    /**
+     * Get only error-level validation issues
+     */
+    public List<ValidationError> getErrorsOnly() {
+        return errors.stream()
+                .filter(error -> "ERROR".equals(error.getSeverity()))
+                .toList();
+    }
+
+    /**
+     * Get only warning-level validation issues
+     */
+    public List<ValidationError> getWarningsOnly() {
+        return errors.stream()
+                .filter(error -> "WARNING".equals(error.getSeverity()))
+                .toList();
+    }
+
+    /**
+     * Add a validation error
+     */
     public void addError(ValidationError error) {
         if (errors == null) {
             errors = new ArrayList<>();
         }
         errors.add(error);
-        if ("ERROR".equals(error.getSeverity())) {
-            errorCount++;
-            valid = false;
-        } else if ("WARNING".equals(error.getSeverity())) {
-            warningCount++;
+        updateCounts();
+    }
+
+    /**
+     * Add multiple validation errors
+     */
+    public void addErrors(List<ValidationError> newErrors) {
+        if (errors == null) {
+            errors = new ArrayList<>();
+        }
+        errors.addAll(newErrors);
+        updateCounts();
+    }
+
+    /**
+     * Update error and warning counts
+     */
+    private void updateCounts() {
+        if (errors != null) {
+            errorCount = (int) errors.stream().filter(e -> "ERROR".equals(e.getSeverity())).count();
+            warningCount = (int) errors.stream().filter(e -> "WARNING".equals(e.getSeverity())).count();
         }
     }
 
-    public boolean hasErrors() {
-        return errors != null && errors.stream().anyMatch(e -> "ERROR".equals(e.getSeverity()));
-    }
-
-    public boolean hasWarnings() {
-        return errors != null && errors.stream().anyMatch(e -> "WARNING".equals(e.getSeverity()));
+    /**
+     * Set errors and update counts
+     */
+    public void setErrors(List<ValidationError> errors) {
+        this.errors = errors;
+        updateCounts();
     }
 }

@@ -18,10 +18,10 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConsumerConfig {
 
     //@Autowired
-    private final RabbitMQConsumerProperties consumerProperties;
+    private final RabbitMQProperties rabbitMQProperties;
 
-    public RabbitMQConsumerConfig(RabbitMQConsumerProperties consumerProperties) {
-        this.consumerProperties = consumerProperties;
+    public RabbitMQConsumerConfig(RabbitMQProperties rabbitMQProperties) {
+        this.rabbitMQProperties = rabbitMQProperties;
     }
 
     @Bean
@@ -36,8 +36,8 @@ public class RabbitMQConsumerConfig {
     }
 
     // getter if needed
-    public RabbitMQConsumerProperties getConsumerProperties() {
-        return consumerProperties;
+    public RabbitMQProperties getRabbitMQProperties() {
+        return rabbitMQProperties;
     }
     // Add more listener config beans or dead-letter handling if needed
 }

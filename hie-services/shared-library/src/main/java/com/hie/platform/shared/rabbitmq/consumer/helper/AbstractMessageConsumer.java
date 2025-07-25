@@ -43,15 +43,14 @@ public abstract class AbstractMessageConsumer {
     /**
      * Process message with built-in retry and error handling
      */
-    protected void processMessage(@Payload String messagePayload,
-                                  Message message,
+    protected void processMessage(QueueMessage queueMessage,
                                   Channel channel,
                                   @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
                                   String processorType) {
-        QueueMessage queueMessage = null;
+        //QueueMessage queueMessage = null;
         try {
             // Parse the message
-            queueMessage = objectMapper.readValue(messagePayload, QueueMessage.class);
+            //queueMessage = objectMapper.readValue(messagePayload, QueueMessage.class);
 
             log.info("Processing {} message - MessageId: {}, CorrelationId: {}, Attempt: {}/{}",
                     processorType,
@@ -65,8 +64,8 @@ public abstract class AbstractMessageConsumer {
 
             // Process the message using the provided processor
             MessageProcessor processor = getMessageProcessor();
-            ProcessingResult result = processor.processMessage(queueMessage);
-            //ProcessingResult result = processor.processMessage(queueMessage, messageContent);
+            //ProcessingResult result = processor.processMessage(queueMessage);
+            ProcessingResult result = processor.processMessage(queueMessage, messageContent);
 
             if (result.isSuccess()) {
                 // Handle successful processing

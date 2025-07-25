@@ -1,6 +1,5 @@
 package com.hie.platform.validation.service;
 
-import com.hie.platform.shared.minio.service.MinioService;
 import com.hie.platform.shared.rabbitmq.producer.model.QueueMessage;
 import com.hie.platform.validation.config.ValidationProperties;
 import com.hie.platform.validation.model.ValidationResult;
@@ -18,7 +17,6 @@ import java.util.regex.Pattern;
 @Slf4j
 public class HL7ValidationService {
 
-    private final MinioService minIOService;
     private final ValidationProperties validationProperties;
 
     // HL7 segment patterns
@@ -27,27 +25,25 @@ public class HL7ValidationService {
     private static final Pattern FIELD_SEPARATOR_PATTERN = Pattern.compile("\\|");
 
     /**
-     * Validate HL7 message from queue
+     * Validate HL7 message content
+     * NOTE: MinIO download is now handled by AbstractMessageConsumer
+     *
+     * @param queueMessage The queue message containing metadata
+     * @param hl7Content The actual HL7 content retrieved from MinIO
+     * @return true if validation successful, false otherwise
      */
-    public boolean validateHL7Message(QueueMessage queueMessage) {
+    public boolean validateHL7Message(QueueMessage queueMessage, String hl7Content) {
         try {
             log.info("Starting HL7 validation - MessageId: {}", queueMessage.getMessageId());
 
-            // Extract file information from payload
+            // Extract metadata from payload
             Map<String, Object> payload = queueMessage.getPayload();
-            String minioPath = (String) payload.get("minioPath");
             String hl7MessageType = (String) payload.get("hl7MessageType");
             String organizationId = (String) payload.get("organizationId");
 
-            if (minioPath == null || minioPath.isEmpty()) {
-                log.error("MinIO path is null or empty for message: {}", queueMessage.getMessageId());
-                return false;
-            }
-
-            // Download HL7 content from MinIO
-            String hl7Content = downloadHL7Content(minioPath);
-            if (hl7Content == null || hl7Content.isEmpty()) {
-                log.error("Failed to retrieve HL7 content from MinIO path: {}", minioPath);
+            // Validate input parameters
+            if (hl7Content == null || hl7Content.trim().isEmpty()) {
+                log.error("HL7 content is null or empty for message: {}", queueMessage.getMessageId());
                 return false;
             }
 
@@ -56,17 +52,26 @@ public class HL7ValidationService {
 
             // Log validation result
             if (validationResult.isValid()) {
-                log.info("HL7 validation successful - MessageId: {}, MessageType: {}",
-                        queueMessage.getMessageId(), hl7MessageType);
+                log.info("HL7 validation successful - MessageId: {}, MessageType: {}, Duration: {}ms",
+                        queueMessage.getMessageId(), hl7MessageType, validationResult.getValidationDurationMs());
+
+                // Store validation result in payload for downstream services
+                payload.put("validationResult", createValidationSummary(validationResult));
+
                 return true;
             } else {
-                log.error("HL7 validation failed - MessageId: {}, Errors: {}",
-                        queueMessage.getMessageId(), validationResult.getErrors().size());
+                log.error("HL7 validation failed - MessageId: {}, Errors: {}, Warnings: {}",
+                        queueMessage.getMessageId(),
+                        validationResult.getErrorCount(),
+                        validationResult.getWarningCount());
 
                 // Log individual validation errors
                 validationResult.getErrors().forEach(error ->
-                        log.error("Validation Error - Type: {}, Message: {}, Location: {}",
-                                error.getErrorType(), error.getErrorMessage(), error.getLocation()));
+                        log.error("Validation Error - Type: {}, Message: {}, Location: {}, Severity: {}",
+                                error.getErrorType(), error.getErrorMessage(), error.getLocation(), error.getSeverity()));
+
+                // Store validation errors in payload for analysis
+                payload.put("validationErrors", validationResult.getErrors());
 
                 return false;
             }
@@ -78,30 +83,29 @@ public class HL7ValidationService {
     }
 
     /**
-     * Download HL7 content from MinIO
+     * Create validation summary for downstream services
      */
-    private String downloadHL7Content(String minioPath) {
-        try {
-            log.debug("Downloading HL7 content from MinIO path: {}", minioPath);
+    private Map<String, Object> createValidationSummary(ValidationResult validationResult) {
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("isValid", validationResult.isValid());
+        summary.put("messageType", validationResult.getMessageType());
+        summary.put("organizationId", validationResult.getOrganizationId());
+        summary.put("validationStartTime", validationResult.getValidationStartTime());
+        summary.put("validationEndTime", validationResult.getValidationEndTime());
+        summary.put("validationDurationMs", validationResult.getValidationDurationMs());
+        summary.put("errorCount", validationResult.getErrorCount());
+        summary.put("warningCount", validationResult.getWarningCount());
 
-            // Use the shared MinIO service to download file content
-            byte[] fileBytes = minIOService.downloadFile(minioPath);
-
-            if (fileBytes == null || fileBytes.length == 0) {
-                log.error("No content retrieved from MinIO path: {}", minioPath);
-                return null;
-            }
-
-            // Convert bytes to string (assuming UTF-8 encoding)
-            String content = new String(fileBytes, "UTF-8");
-
-            log.debug("Successfully downloaded HL7 content - Size: {} bytes", fileBytes.length);
-            return content;
-
-        } catch (Exception e) {
-            log.error("Failed to download HL7 content from MinIO path: {}", minioPath, e);
-            return null;
+        // Include only error/warning counts, not full details to keep payload size manageable
+        if (!validationResult.getErrors().isEmpty()) {
+            summary.put("hasErrors", true);
+            summary.put("errorTypes", validationResult.getErrors().stream()
+                    .map(ValidationError::getErrorType)
+                    .distinct()
+                    .toList());
         }
+
+        return summary;
     }
 
     /**
@@ -120,7 +124,8 @@ public class HL7ValidationService {
             if (hl7Content.length() > validationProperties.getHl7().getMaxMessageSize()) {
                 errors.add(ValidationError.builder()
                         .errorType("SIZE_LIMIT_EXCEEDED")
-                        .errorMessage("Message size exceeds maximum allowed limit")
+                        .errorMessage("Message size (" + hl7Content.length() + " bytes) exceeds maximum allowed limit (" +
+                                validationProperties.getHl7().getMaxMessageSize() + " bytes)")
                         .location("MESSAGE")
                         .severity("ERROR")
                         .build());
@@ -133,9 +138,9 @@ public class HL7ValidationService {
             validateMSHSegment(hl7Content, errors);
 
             // Message type validation
-            if (validationProperties.getHl7().getSupportedMessageTypes().contains(messageType)) {
+            if (messageType != null && validationProperties.getHl7().getSupportedMessageTypes().contains(messageType)) {
                 validateMessageType(hl7Content, messageType, errors);
-            } else {
+            } else if (messageType != null) {
                 errors.add(ValidationError.builder()
                         .errorType("UNSUPPORTED_MESSAGE_TYPE")
                         .errorMessage("Message type not supported: " + messageType)
@@ -144,17 +149,15 @@ public class HL7ValidationService {
                         .build());
             }
 
-            // Segment validation
+            // Conditional validations based on configuration
             if (validationProperties.getHl7().isValidateSegments()) {
                 validateSegments(hl7Content, errors);
             }
 
-            // Field validation
             if (validationProperties.getHl7().isValidateFields()) {
                 validateFields(hl7Content, errors);
             }
 
-            // Data type validation
             if (validationProperties.getHl7().isValidateDatatypes()) {
                 validateDataTypes(hl7Content, errors);
             }
@@ -175,11 +178,15 @@ public class HL7ValidationService {
         result.setValidationDurationMs(
                 java.time.Duration.between(result.getValidationStartTime(), result.getValidationEndTime()).toMillis());
 
+        // Calculate error and warning counts
+        long errorCount = errors.stream().filter(e -> "ERROR".equals(e.getSeverity())).count();
+        long warningCount = errors.stream().filter(e -> "WARNING".equals(e.getSeverity())).count();
+
+        result.setErrorCount((int) errorCount);
+        result.setWarningCount((int) warningCount);
+
         log.info("Validation completed - Valid: {}, Errors: {}, Warnings: {}, Duration: {}ms",
-                result.isValid(),
-                errors.stream().filter(e -> "ERROR".equals(e.getSeverity())).count(),
-                errors.stream().filter(e -> "WARNING".equals(e.getSeverity())).count(),
-                result.getValidationDurationMs());
+                result.isValid(), errorCount, warningCount, result.getValidationDurationMs());
 
         return result;
     }
@@ -216,7 +223,7 @@ public class HL7ValidationService {
             if (!line.isEmpty() && !SEGMENT_PATTERN.matcher(line).find()) {
                 errors.add(ValidationError.builder()
                         .errorType("INVALID_SEGMENT_FORMAT")
-                        .errorMessage("Invalid segment format at line " + (i + 1))
+                        .errorMessage("Invalid segment format at line " + (i + 1) + ": " + line.substring(0, Math.min(line.length(), 50)))
                         .location("LINE_" + (i + 1))
                         .severity("ERROR")
                         .build());
@@ -261,6 +268,16 @@ public class HL7ValidationService {
                     .errorMessage("Message type (MSH.9) is required")
                     .location("MSH.9")
                     .severity("ERROR")
+                    .build());
+        }
+
+        // Validate timestamp (MSH.7)
+        if (fields.length > 6 && (fields[6] == null || fields[6].trim().isEmpty())) {
+            errors.add(ValidationError.builder()
+                    .errorType("MISSING_TIMESTAMP")
+                    .errorMessage("Timestamp (MSH.7) is required")
+                    .location("MSH.7")
+                    .severity("WARNING")
                     .build());
         }
     }
@@ -327,6 +344,10 @@ public class HL7ValidationService {
             String line = lines[i].trim();
             if (line.isEmpty()) continue;
 
+            if (line.length() < 3) {
+                continue; // Skip invalid lines
+            }
+
             String segmentType = line.substring(0, 3);
             String[] fields = line.split("\\|");
 
@@ -336,7 +357,7 @@ public class HL7ValidationService {
                 errors.add(ValidationError.builder()
                         .errorType("INSUFFICIENT_FIELDS")
                         .errorMessage("Segment " + segmentType + " should have at least " + expectedFieldCount + " fields, found: " + fields.length)
-                        .location(segmentType)
+                        .location(segmentType + "_LINE_" + (i + 1))
                         .severity("WARNING")
                         .build());
             }
@@ -347,9 +368,41 @@ public class HL7ValidationService {
      * Validate data types
      */
     private void validateDataTypes(String hl7Content, List<ValidationError> errors) {
-        // Implementation for data type validation
-        // This is a placeholder - implement specific data type validation as needed
+        // Basic data type validation - can be extended based on requirements
+        String[] lines = hl7Content.split("\r");
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (line.isEmpty() || line.length() < 3) continue;
+
+            String segmentType = line.substring(0, 3);
+
+            // Example: Validate date formats in MSH.7 (timestamp)
+            if ("MSH".equals(segmentType)) {
+                String[] fields = line.split("\\|");
+                if (fields.length > 6 && fields[6] != null && !fields[6].isEmpty()) {
+                    if (!isValidHL7DateTime(fields[6])) {
+                        errors.add(ValidationError.builder()
+                                .errorType("INVALID_DATE_FORMAT")
+                                .errorMessage("Invalid date/time format in MSH.7: " + fields[6])
+                                .location("MSH.7")
+                                .severity("WARNING")
+                                .build());
+                    }
+                }
+            }
+        }
+
         log.debug("Data type validation completed");
+    }
+
+    /**
+     * Validate HL7 date/time format
+     */
+    private boolean isValidHL7DateTime(String dateTime) {
+        // HL7 date format: YYYYMMDD[HHMM[SS[.SSSS]]][+/-ZZZZ]
+        // This is a basic validation - can be enhanced
+        return dateTime.matches("\\d{8}(\\d{4}(\\d{2}(\\.\\d{1,4})?)?)?([+-]\\d{4})?");
     }
 
     /**
@@ -371,6 +424,8 @@ public class HL7ValidationService {
             case "PID" -> 10;
             case "EVN" -> 5;
             case "PV1" -> 20;
+            case "OBX" -> 11;
+            case "ORC" -> 12;
             default -> 0; // No specific requirement
         };
     }

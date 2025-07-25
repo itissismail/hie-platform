@@ -22,7 +22,7 @@ public interface MessageProcessor {
      * @param messageContent The actual content retrieved from MinIO (if applicable)
      * @return ProcessingResult containing success status and optional next queue information
      */
-    ProcessingResult processMessage(QueueMessage queueMessage);
+    ProcessingResult processMessage(QueueMessage queueMessage,String messageContent);
 
     /**
      * Get the processor name for logging purposes
