@@ -6,8 +6,8 @@ import org.springframework.stereotype.Component;
 
 
 @Data
-//@Component("rabbitMQConsumerProperties")  // Explicitly name the bean
-//@ConfigurationProperties(prefix = "rabbitmq")
+@Component// Explicitly name the bean
+@ConfigurationProperties(prefix = "rabbitmq")
 
 public class RabbitMQConsumerProperties {
     private String host;

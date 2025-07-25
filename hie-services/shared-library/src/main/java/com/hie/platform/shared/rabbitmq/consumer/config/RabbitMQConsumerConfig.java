@@ -12,13 +12,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 @ConditionalOnProperty(name = "rabbitmq.consumer.enabled", havingValue = "true")
 @EnableConfigurationProperties(RabbitMQProperties.class)
 public class RabbitMQConsumerConfig {
 
-    @Autowired
-    private final RabbitMQProperties rabbitMQProperties;
+    //@Autowired
+    private final RabbitMQConsumerProperties consumerProperties;
+
+    public RabbitMQConsumerConfig(RabbitMQConsumerProperties consumerProperties) {
+        this.consumerProperties = consumerProperties;
+    }
 
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
@@ -31,6 +35,9 @@ public class RabbitMQConsumerConfig {
         return factory;
     }
 
-
+    // getter if needed
+    public RabbitMQConsumerProperties getConsumerProperties() {
+        return consumerProperties;
+    }
     // Add more listener config beans or dead-letter handling if needed
 }

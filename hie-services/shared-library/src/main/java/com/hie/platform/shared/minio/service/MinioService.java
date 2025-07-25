@@ -41,15 +41,15 @@ public class MinioService {
      * Upload file with structured path: organization-id/year/month/day/correlationId.ext
      */
     public Mono<FileUploadResult> uploadFile(String content, String organizationId,
-                                             String correlationId, String fileExtension,String minioPath ) {
-        return uploadFile(content, organizationId, correlationId, fileExtension, "text/plain",minioPath);
+                                             String correlationId, String fileExtension, String minioPath) {
+        return uploadFile(content, organizationId, correlationId, fileExtension, "text/plain", minioPath);
     }
 
     /**
      * Upload file with structured path and custom content type
      */
     public Mono<FileUploadResult> uploadFile(String content, String organizationId,
-                                             String messageId, String fileExtension, String contentType,String minioPath) {
+                                             String messageId, String fileExtension, String contentType, String minioPath) {
         return Mono.fromCallable(() -> {
             try {
                 log.info("Attempting to upload content of size: {} bytes", content.length());
@@ -96,7 +96,7 @@ public class MinioService {
      * Upload binary file
      */
     public Mono<FileUploadResult> uploadFile(byte[] content, String organizationId,
-                                             String messageId, String fileExtension, String contentType, String minioPath ) {
+                                             String messageId, String fileExtension, String contentType, String minioPath) {
         return Mono.fromCallable(() -> {
             try {
                 //String minioPath = generateStructuredPath(organizationId, messageId, fileExtension);
@@ -143,6 +143,7 @@ public class MinioService {
 
                 return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             } catch (Exception e) {
+                log.error("Failed to download file as string from MinIO path: {}", minioPath, e);
                 throw new MinioServiceException("Failed to download file from MinIO: " + minioPath, e);
             }
         }).subscribeOn(Schedulers.boundedElastic());
@@ -161,10 +162,60 @@ public class MinioService {
 
                 return stream.readAllBytes();
             } catch (Exception e) {
+                log.error("Failed to download file as bytes from MinIO path: {}", minioPath, e);
                 throw new MinioServiceException("Failed to download file from MinIO: " + minioPath, e);
             }
         }).subscribeOn(Schedulers.boundedElastic());
     }
+
+    /**
+     * Download file synchronously - for use with existing blocking code
+     *
+     * @param minioPath Path to the file in MinIO
+     * @return File content as byte array
+     * @throws MinioServiceException if download fails
+     */
+    public byte[] downloadFile(String minioPath) {
+        try {
+            log.debug("Downloading file from MinIO path: {}", minioPath);
+
+            try (InputStream stream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(minioProperties.getBucketName())
+                            .object(minioPath)
+                            .build())) {
+
+                byte[] content = stream.readAllBytes();
+                log.debug("Successfully downloaded file - Size: {} bytes", content.length);
+                return content;
+
+            } catch (Exception e) {
+                log.error("Failed to download file from MinIO path: {}", minioPath, e);
+                throw new MinioServiceException("Failed to download file from MinIO: " + minioPath, e);
+            }
+        } catch (Exception e) {
+            log.error("Error during file download from MinIO path: {}", minioPath, e);
+            throw new MinioServiceException("Failed to download file from MinIO: " + minioPath, e);
+        }
+    }
+
+    /**
+     * Download file synchronously as string
+     *
+     * @param minioPath Path to the file in MinIO
+     * @return File content as UTF-8 string
+     * @throws MinioServiceException if download fails
+     */
+    public String downloadFileAsStringSync(String minioPath) {
+        try {
+            byte[] content = downloadFile(minioPath);
+            return new String(content, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.error("Failed to download file as string from MinIO path: {}", minioPath, e);
+            throw new MinioServiceException("Failed to download file as string from MinIO: " + minioPath, e);
+        }
+    }
+
 
     /**
      * Delete file
@@ -207,7 +258,6 @@ public class MinioService {
     }
 
 
-
     /**
      * Ensure bucket exists, create if it doesn't
      */
@@ -228,7 +278,4 @@ public class MinioService {
         }
     }
 
-    public byte[] downloadFile(String minioPath) {
-        return null;
-    }
 }

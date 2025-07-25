@@ -10,3 +10,4 @@ roles:
     resources:
       /R4/Patient: ["GET", "POST", "PUT"]
       /intake/ingest: ["GET","POST"]
+      /R4/Condition/**: ["*"]
