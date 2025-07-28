@@ -1,6 +1,8 @@
 package com.hie.platform.shared.audit.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hie.platform.shared.audit.aspect.NonReactiveAuditTrailAspect;
+import com.hie.platform.shared.audit.service.NonReactiveAuditTrailService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -35,4 +37,22 @@ public class AuditAutoConfiguration {
     public ObjectMapper objectMapper() {
         return new ObjectMapper();
     }
+
+   /* @Bean
+    @ConditionalOnMissingBean
+    public NonReactiveAuditTrailService nonReactiveAuditTrailService(
+            com.hie.platform.shared.audit.repository.MessageAuditRepository messageAuditRepository) {
+        return new NonReactiveAuditTrailService(messageAuditRepository);
+    }
+
+    *//**
+     * Non-reactive audit aspect bean
+     * This will be auto-created by @ComponentScan, but explicitly defining for clarity
+     *//*
+    @Bean
+    @ConditionalOnMissingBean
+    public NonReactiveAuditTrailAspect nonReactiveAuditTrailAspect(
+            NonReactiveAuditTrailService nonReactiveAuditTrailService) {
+        return new NonReactiveAuditTrailAspect(nonReactiveAuditTrailService);
+    }*/
 }

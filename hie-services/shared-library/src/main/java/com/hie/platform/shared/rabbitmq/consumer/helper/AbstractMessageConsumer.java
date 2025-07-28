@@ -18,6 +18,8 @@ import org.springframework.messaging.handler.annotation.Payload;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -36,6 +38,7 @@ public abstract class AbstractMessageConsumer {
 
     /**
      * Get the message processor implementation
+     *
      * @return MessageProcessor instance
      */
     protected abstract MessageProcessor getMessageProcessor();
@@ -47,10 +50,7 @@ public abstract class AbstractMessageConsumer {
                                   Channel channel,
                                   @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag,
                                   String processorType) {
-        //QueueMessage queueMessage = null;
         try {
-            // Parse the message
-            //queueMessage = objectMapper.readValue(messagePayload, QueueMessage.class);
 
             log.info("Processing {} message - MessageId: {}, CorrelationId: {}, Attempt: {}/{}",
                     processorType,
@@ -64,7 +64,7 @@ public abstract class AbstractMessageConsumer {
 
             // Process the message using the provided processor
             MessageProcessor processor = getMessageProcessor();
-            //ProcessingResult result = processor.processMessage(queueMessage);
+            //Call Message Processor
             ProcessingResult result = processor.processMessage(queueMessage, messageContent);
 
             if (result.isSuccess()) {
@@ -138,7 +138,7 @@ public abstract class AbstractMessageConsumer {
                                             long deliveryTag,
                                             String processorType) throws Exception {
         // Acknowledge the message
-        channel.basicAck(deliveryTag, false);
+        //channel.basicAck(deliveryTag, false);
         log.info("Successfully processed {} message - MessageId: {}",
                 processorType, queueMessage.getMessageId());
 
@@ -156,7 +156,8 @@ public abstract class AbstractMessageConsumer {
             // Update message metadata if needed
             if (result.getProcessedData() != null) {
                 // Add processed data to payload or update existing data
-                queueMessage.getPayload().put("processedData", result.getProcessedData());
+                //Commented out due to circular reference -- Need to check
+                //queueMessage.getPayload().put("processedData", result.getProcessedData());
             }
 
             // Reset retry count for next stage
@@ -237,7 +238,7 @@ public abstract class AbstractMessageConsumer {
                 });
 
                 // Acknowledge the original message (remove from queue)
-                channel.basicAck(deliveryTag, false);
+                //channel.basicAck(deliveryTag, false);
             }
 
         } catch (Exception e) {

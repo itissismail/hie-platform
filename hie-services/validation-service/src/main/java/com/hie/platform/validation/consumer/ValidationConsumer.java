@@ -1,6 +1,8 @@
 package com.hie.platform.validation.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hie.platform.shared.audit.annotation.AuditStep;
+import com.hie.platform.shared.audit.model.MessageStatus;
 import com.hie.platform.shared.minio.service.MinioService;
 import com.hie.platform.shared.rabbitmq.common.RabbitMQProperties;
 import com.hie.platform.shared.rabbitmq.consumer.helper.AbstractMessageConsumer;
@@ -13,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.support.AmqpHeaders;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -37,6 +40,9 @@ public class ValidationConsumer extends AbstractMessageConsumer {
 
     private final ValidationMessageProcessor validationMessageProcessor;
 
+    @Value("${rabbitmq.service-name}")
+    String serviceName;
+
     public ValidationConsumer(ObjectMapper objectMapper,
                               RabbitMQProperties rabbitMQProperties,
                               MinioService minioService,
@@ -54,16 +60,21 @@ public class ValidationConsumer extends AbstractMessageConsumer {
      * 1. Deserialize the message payload
      * 2. Extract delivery tag and channel information
      * 3. Call this method with the parsed parameters
+     *
+     * ValidationConsumer (Entry Point)
+     *     ↓ extends
+     * AbstractMessageConsumer (Framework Logic)
+     *     ↓ uses
+     * ValidationMessageProcessor (Business Logic)
+     *     ↓ uses
+     * HL7ValidationService (Domain Logic)
      */
     @RabbitListener(queues = "${rabbitmq.queues.hl7-processing}")
-/*    public void handleHL7ProcessingMessage(@Payload String messagePayload,
-                                           Message message,
-                                           Channel channel,
-                                           @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {*/
+    @AuditStep(serviceName = "Validation-Service", stepName = MessageStatus.VALIDATED)
     public void handleHL7ProcessingMessage(QueueMessage queueMessage, Channel channel,
                                            @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
 
-        log.info("Starting HL7 validation processing - MessageId: {}", queueMessage.getMessageId());
+        log.info("Starting HL7 validation processing - MessageId: {} , correlationId: {}", queueMessage.getMessageId(), queueMessage.getCorrelationId());
 
 
         Map<String, Object> payload = queueMessage.getPayload();
@@ -73,7 +84,7 @@ public class ValidationConsumer extends AbstractMessageConsumer {
         String s3Location = (String) payload.get("s3Location");
 
         log.debug("Processing HL7 validation - OrganizationId: {}, MessageType: {}, PatientId: {}, s3Location: {}",
-                organizationId, hl7MessageType, patientId,s3Location);
+                organizationId, hl7MessageType, patientId, s3Location);
         String minioPath = (String) payload.get("minioPath");
 
         log.debug("Processing HL7 validation - OrganizationId: {}, MessageType: {}, PatientId: {}, MinioPath: {}",
@@ -87,7 +98,7 @@ public class ValidationConsumer extends AbstractMessageConsumer {
         // 3. Call getMessageProcessor().processMessage() with content
         // 4. Handle success (forward to next queue) or failure (retry/DLQ)
         // 5. Manage acknowledgments and error handling
-        processMessage(queueMessage, channel, deliveryTag, "HL7_VALIDATION");
+        processMessage(queueMessage, channel, deliveryTag, serviceName);
     }
 
     /**

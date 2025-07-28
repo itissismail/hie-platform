@@ -66,6 +66,16 @@ public class MessageAudit {
     @Column("response_payload")
     private String responsePayload;
 
+    @Column("previous_message_id")
+    private UUID previousMessageId;
+
+    @Column("completed_at")
+    private LocalDateTime completedAt;
+
+    @Column("failed_at")
+    private LocalDateTime failedAt;
+
+
     public MessageAudit(UUID messageId, UUID correlationId, String serviceName, String status) {
         this.messageId = messageId;
         this.correlationId = correlationId;

@@ -1,5 +1,7 @@
 package com.hie.platform.validation.processor;
 
+import com.hie.platform.shared.audit.annotation.AuditStep;
+import com.hie.platform.shared.audit.model.MessageStatus;
 import com.hie.platform.shared.rabbitmq.common.RabbitMQProperties;
 import com.hie.platform.shared.rabbitmq.consumer.processor.MessageProcessor;
 import com.hie.platform.shared.rabbitmq.consumer.processor.ProcessingResult;

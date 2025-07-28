@@ -49,14 +49,14 @@ rabbitmq:
     enabled: true
 
   queues:
-    hl7-processing: ${RABBITMQ_QUEUE_PROCESSING:hl7-raw-processing-queue}
-    hl7-validation: ${RABBITMQ_QUEUE_VALIDATION:hl7-validation-queue}
+    hl7-processing: ${RABBITMQ_QUEUE_RAW_PROCESSING:hl7-raw-msg-queue}
+    hl7-validation: ${RABBITMQ_QUEUE_VALIDATED_MSG:hl7-validated-msg-queue}
     hl7-conversion: ${RABBITMQ_QUEUE_CONVERSION:hl7-conversion-queue}
     hl7-storage: ${RABBITMQ_QUEUE_STORAGE:hl7-storage-queue}
     dead-letter: ${RABBITMQ_QUEUE_DEAD_LETTER:hl7-dead-letter-queue}
 
   routing-keys:
-    hl7-processing: ${RABBITMQ_ROUTING_PROCESSING:hl7.raw.processing}
+    hl7-processing: ${RABBITMQ_ROUTING_RAW_PROCESSING:hl7.raw.processing}
     hl7-validation: ${RABBITMQ_ROUTING_VALIDATION:hl7.validation}
     hl7-conversion: ${RABBITMQ_ROUTING_CONVERSION:hl7.conversion}
     hl7-storage: ${RABBITMQ_ROUTING_STORAGE:hl7.storage}

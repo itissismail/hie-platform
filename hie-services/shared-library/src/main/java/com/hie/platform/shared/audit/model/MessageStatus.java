@@ -5,8 +5,9 @@ public enum MessageStatus {
 
     RECEIVED("message_received"),
     VALIDATED("message_validated"),
+    RECEIVED_VALIDATED("message_received_validated"),
     PARSED("message_parsed"),
-    PROCESSING("message_processing"),
+    PROCESSING("message_raw_processing"),
     PROCESSED("message_processed"),
     TRANSFORMED("message_transformed"),
     ROUTED("message_routed"),
