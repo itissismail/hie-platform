@@ -1,6 +1,6 @@
 package com.hie.platform.shared.audit.aspect;
 
-import com.hie.platform.shared.audit.annotation.AuditStep;
+import com.hie.platform.shared.audit.annotation.NonReactiveAuditStep;
 import com.hie.platform.shared.audit.context.NonReactiveAuditContext;
 import com.hie.platform.shared.audit.model.MessageStatus;
 import com.hie.platform.shared.audit.service.NonReactiveAuditTrailService;
@@ -13,12 +13,20 @@ import org.aspectj.lang.annotation.Aspect;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * Author M.Ismail
- * Non-reactive AOP aspect that intercepts @AuditStep methods for message-based services
+ * Non-reactive AOP aspect that intercepts @NonReactiveAuditStep methods for message-based services
  * Date 28-July-2025
+ *
+ * UPDATED: Enhanced to handle both @AuditStep and @NonReactiveAuditStep annotations
+ * - Uses existing correlationId from QueueMessage
+ * - Generates new messageId for current service processing (configurable)
+ * - Preserves previous messageId from incoming message
+ * - Properly handles message-based service audit flow
+ * - Uses ThreadLocal context for non-reactive operations
  */
 @Aspect
 @Component
@@ -29,32 +37,74 @@ public class NonReactiveAuditTrailAspect {
 
     private final NonReactiveAuditTrailService nonReactiveAuditTrailService;
 
-    @Around("@annotation(auditStep) && !execution(* *..*.*(..reactor.core.publisher.Mono..))")
-    public Object auditNonReactiveStepExecution(ProceedingJoinPoint joinPoint, AuditStep auditStep) throws Throwable {
-        String serviceName = auditStep.serviceName();
-        MessageStatus stepName = auditStep.stepName();
+    /**
+     * Handle @NonReactiveAuditStep annotation
+     */
+    @Around("@annotation(nonReactiveAuditStep)")
+    public Object auditNonReactiveStepExecution(ProceedingJoinPoint joinPoint, NonReactiveAuditStep nonReactiveAuditStep) throws Throwable {
+        String serviceName = nonReactiveAuditStep.serviceName();
+        MessageStatus stepName = nonReactiveAuditStep.stepName();
+        boolean generateNewMessageId = nonReactiveAuditStep.generateNewMessageId();
+        boolean extractFromQueueMessage = nonReactiveAuditStep.extractFromQueueMessage();
 
-        log.debug("Starting non-reactive audit step: {} for service: {}", stepName.getValue(), serviceName);
+        log.debug("Starting non-reactive audit step: {} for service: {}, generateNewMessageId: {}",
+                stepName.getValue(), serviceName, generateNewMessageId);
 
         long startTime = System.currentTimeMillis();
-        UUID newMessageId = null;
+        UUID messageId = null;
         UUID correlationId = null;
         UUID previousMessageId = null;
 
         try {
-            // Extract QueueMessage from method arguments to get IDs
-            QueueMessage queueMessage = extractQueueMessage(joinPoint);
+            // Extract QueueMessage from method arguments if enabled
+            QueueMessage queueMessage = null;
+            if (extractFromQueueMessage) {
+                queueMessage = extractQueueMessage(joinPoint);
+            }
 
             if (queueMessage != null) {
+                // Use existing correlationId from QueueMessage (preserve throughout flow)
                 correlationId = UUID.fromString(queueMessage.getCorrelationId());
-                previousMessageId = UUID.fromString(queueMessage.getMessageId());
 
-                // Generate new message ID for this service
-                newMessageId = UUID.randomUUID();
+                if (generateNewMessageId) {
+                    // Get current messageId as previousMessageId
+                    previousMessageId = UUID.fromString(queueMessage.getMessageId());
 
-                // Set up non-reactive audit context
+                    // Generate NEW messageId for current service processing
+                    messageId = UUID.randomUUID();
+
+                    // Update QueueMessage with new messageId for current service
+                    queueMessage.setMessageId(messageId.toString());
+
+                    // Store previousMessageId in payload for downstream services
+                    Map<String, Object> payload = queueMessage.getPayload();
+                    if (payload != null) {
+                        payload.put("previousMessageId", previousMessageId.toString());
+                    }
+
+                    log.debug("Message ID flow - CorrelationId: {} (preserved), PreviousMessageId: {} (from incoming), NewMessageId: {} (generated for current service)",
+                            correlationId, previousMessageId, messageId);
+                } else {
+                    // Use existing messageId without generating new one
+                    messageId = UUID.fromString(queueMessage.getMessageId());
+
+                    // Try to get previousMessageId from payload
+                    Map<String, Object> payload = queueMessage.getPayload();
+                    if (payload != null && payload.containsKey("previousMessageId")) {
+                        try {
+                            previousMessageId = UUID.fromString((String) payload.get("previousMessageId"));
+                        } catch (Exception e) {
+                            log.debug("Could not parse previousMessageId from payload: {}", payload.get("previousMessageId"));
+                        }
+                    }
+
+                    log.debug("Using existing messageId: {}, correlationId: {}, previousMessageId: {}",
+                            messageId, correlationId, previousMessageId);
+                }
+
+                // Set up non-reactive audit context with proper ID relationships
                 NonReactiveAuditContext.setContext(NonReactiveAuditContext.builder()
-                        .messageId(newMessageId)
+                        .messageId(messageId)
                         .correlationId(correlationId)
                         .previousMessageId(previousMessageId)
                         .serviceName(serviceName)
@@ -62,28 +112,39 @@ public class NonReactiveAuditTrailAspect {
                         .startTime(startTime)
                         .build());
 
-                // Update the QueueMessage with new message ID for downstream processing
-                queueMessage.setMessageId(newMessageId.toString());
+                // Start audit step with proper ID relationships
+                nonReactiveAuditTrailService.startStepWithExistingMessageId(
+                        messageId,
+                        correlationId,
+                        previousMessageId,
+                        serviceName,
+                        stepName.getValue(),
+                        extractRequestPayload(joinPoint)
+                );
 
-                // Start audit step
-                nonReactiveAuditTrailService.startStepSync(correlationId, previousMessageId,
-                        serviceName, stepName.getValue(), extractRequestPayload(joinPoint));
+                log.debug("Started audit for step: {}, messageId: {}, correlationId: {}, previousMessageId: {}",
+                        stepName.getValue(), messageId, correlationId, previousMessageId);
 
-                log.debug("Started audit for step: {}, newMessageId: {}, correlationId: {}, previousMessageId: {}",
-                        stepName.getValue(), newMessageId, correlationId, previousMessageId);
             } else {
-                log.warn("No QueueMessage found in method arguments for audit step: {}", stepName.getValue());
-                // Fallback: create context with generated IDs
-                newMessageId = UUID.randomUUID();
+                log.warn("No QueueMessage found in method arguments for audit step: {} - creating fallback context",
+                        stepName.getValue());
+
+                // Fallback: create context with generated IDs (should not happen in message-based services)
+                messageId = UUID.randomUUID();
                 correlationId = UUID.randomUUID();
 
                 NonReactiveAuditContext.setContext(NonReactiveAuditContext.builder()
-                        .messageId(newMessageId)
+                        .messageId(messageId)
                         .correlationId(correlationId)
                         .serviceName(serviceName)
                         .stepName(stepName.getValue())
                         .startTime(startTime)
                         .build());
+
+                // Start audit step even without proper context
+                nonReactiveAuditTrailService.startStepWithExistingMessageId(
+                        messageId, correlationId, null,
+                        serviceName, stepName.getValue(), extractRequestPayload(joinPoint));
             }
 
             // Execute the original method
@@ -93,13 +154,13 @@ public class NonReactiveAuditTrailAspect {
             long processingTime = System.currentTimeMillis() - startTime;
 
             // Complete audit step
-            if (newMessageId != null) {
-                nonReactiveAuditTrailService.completeStep(newMessageId, correlationId,
+            if (messageId != null && correlationId != null) {
+                nonReactiveAuditTrailService.completeStep(messageId, correlationId,
                         serviceName, stepName.getValue(),
                         result != null ? truncateResponse(result.toString()) : null, processingTime);
 
-                log.debug("Completed audit step: {} with processing time: {}ms",
-                        stepName.getValue(), processingTime);
+                log.debug("Completed audit step: {} with processing time: {}ms, messageId: {}",
+                        stepName.getValue(), processingTime, messageId);
             }
 
             return result;
@@ -107,11 +168,12 @@ public class NonReactiveAuditTrailAspect {
         } catch (Exception e) {
             long processingTime = System.currentTimeMillis() - startTime;
 
-            log.error("Non-reactive audit step failed: {} with error: {}", stepName.getValue(), e.getMessage());
+            log.error("Non-reactive audit step failed: {} with error: {}, messageId: {}",
+                    stepName.getValue(), e.getMessage(), messageId);
 
             // Fail audit step
-            if (newMessageId != null && correlationId != null) {
-                nonReactiveAuditTrailService.failStep(newMessageId, correlationId,
+            if (messageId != null && correlationId != null) {
+                nonReactiveAuditTrailService.failStep(messageId, correlationId,
                         serviceName, stepName.getValue(), e.getMessage(), processingTime);
             }
 
@@ -121,6 +183,43 @@ public class NonReactiveAuditTrailAspect {
             // Clean up context
             NonReactiveAuditContext.clear();
         }
+    }
+
+    /**
+     * Handle legacy @AuditStep annotation for backward compatibility
+     * UPDATED: Added support for both annotations
+     */
+    @Around("@annotation(auditStep) && !execution(* *..*.*(..reactor.core.publisher.Mono..))")
+    public Object auditLegacyStepExecution(ProceedingJoinPoint joinPoint, com.hie.platform.shared.audit.annotation.AuditStep auditStep) throws Throwable {
+        // Convert legacy annotation to new format
+        NonReactiveAuditStep converted = new NonReactiveAuditStep() {
+            @Override
+            public Class<? extends java.lang.annotation.Annotation> annotationType() {
+                return NonReactiveAuditStep.class;
+            }
+
+            @Override
+            public String serviceName() {
+                return auditStep.serviceName();
+            }
+
+            @Override
+            public MessageStatus stepName() {
+                return auditStep.stepName();
+            }
+
+            @Override
+            public boolean generateNewMessageId() {
+                return true; // Default behavior for legacy annotation
+            }
+
+            @Override
+            public boolean extractFromQueueMessage() {
+                return true; // Default behavior for legacy annotation
+            }
+        };
+
+        return auditNonReactiveStepExecution(joinPoint, converted);
     }
 
     /**
@@ -137,7 +236,7 @@ public class NonReactiveAuditTrailAspect {
     }
 
     /**
-     * Extract request payload from method arguments
+     * Extract request payload from method arguments for audit logging
      */
     private String extractRequestPayload(ProceedingJoinPoint joinPoint) {
         Object[] args = joinPoint.getArgs();
@@ -145,9 +244,34 @@ public class NonReactiveAuditTrailAspect {
             if (arg instanceof QueueMessage) {
                 QueueMessage queueMessage = (QueueMessage) arg;
                 if (queueMessage.getPayload() != null) {
-                    return queueMessage.getPayload().toString();
+                    // Create a clean payload summary for audit (remove sensitive data if needed)
+                    Map<String, Object> payload = queueMessage.getPayload();
+                    StringBuilder summary = new StringBuilder();
+                    summary.append("QueueMessage{");
+                    summary.append("messageId=").append(queueMessage.getMessageId());
+                    summary.append(", correlationId=").append(queueMessage.getCorrelationId());
+
+                    if (payload.containsKey("organizationId")) {
+                        summary.append(", organizationId=").append(payload.get("organizationId"));
+                    }
+                    if (payload.containsKey("hl7MessageType")) {
+                        summary.append(", hl7MessageType=").append(payload.get("hl7MessageType"));
+                    }
+                    if (payload.containsKey("patientId")) {
+                        summary.append(", patientId=").append(payload.get("patientId"));
+                    }
+                    if (payload.containsKey("minioPath")) {
+                        summary.append(", minioPath=").append(payload.get("minioPath"));
+                    }
+                    if (payload.containsKey("previousMessageId")) {
+                        summary.append(", previousMessageId=").append(payload.get("previousMessageId"));
+                    }
+                    summary.append("}");
+
+                    return summary.toString();
                 }
             }
+            // Handle other string arguments (but limit size)
             if (arg instanceof String && ((String) arg).length() < 500) {
                 return (String) arg;
             }

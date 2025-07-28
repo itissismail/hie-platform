@@ -1,5 +1,9 @@
+--DROP SCHEMA public CASCADE;
+--CREATE SCHEMA public;
+-- GRANT ALL ON SCHEMA public TO hie_user;
+-- GRANT ALL ON SCHEMA public TO hie_user;
 -- Create audit table
-CREATE TABLE message_audit (
+create TABLE message_audit (
     id BIGSERIAL PRIMARY KEY,
     message_id UUID NOT NULL,
     correlation_id UUID NOT NULL,
@@ -12,11 +16,14 @@ CREATE TABLE message_audit (
     step_name VARCHAR(100) NOT NULL,
     step_sequence INTEGER DEFAULT 0,
     request_payload TEXT,
-    response_payload TEXT
+    response_payload TEXT,
+    previous_message_id UUID ,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    failed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create message state table
-CREATE TABLE message_state (
+create TABLE message_state (
     id BIGSERIAL PRIMARY KEY,
     message_id UUID UNIQUE NOT NULL,
     correlation_id UUID NOT NULL,
@@ -34,19 +41,19 @@ CREATE TABLE message_state (
 );
 
 -- Create indexes
-CREATE INDEX idx_message_audit_correlation ON message_audit(correlation_id);
-CREATE INDEX idx_message_audit_status ON message_audit(status);
-CREATE INDEX idx_message_audit_message_id ON message_audit(message_id);
-CREATE INDEX idx_message_audit_service_name ON message_audit(service_name);
-CREATE INDEX idx_message_audit_step_name ON message_audit(step_name);
-CREATE INDEX idx_message_audit_created_at ON message_audit(created_at);
-CREATE INDEX idx_message_state_correlation ON message_state(message_id);
-CREATE INDEX idx_message_state_status ON message_state(current_status);
-CREATE INDEX idx_message_state_updated_at ON message_state(updated_at);
-CREATE INDEX idx_message_state_patient_id ON message_state(patient_id);
+create index idx_message_audit_correlation on message_audit(correlation_id);
+create index idx_message_audit_status on message_audit(status);
+create index idx_message_audit_message_id on message_audit(message_id);
+create index idx_message_audit_service_name on message_audit(service_name);
+create index idx_message_audit_step_name on message_audit(step_name);
+create index idx_message_audit_created_at on message_audit(created_at);
+create index idx_message_state_correlation on message_state(message_id);
+create index idx_message_state_status on message_state(current_status);
+create index idx_message_state_updated_at on message_state(updated_at);
+create index idx_message_state_patient_id on message_state(patient_id);
 
 -- Create quarantine table
-CREATE TABLE quarantine_messages (
+create TABLE quarantine_messages (
     id BIGSERIAL PRIMARY KEY,
     message_id UUID NOT NULL,
     reason VARCHAR(255) NOT NULL,
@@ -59,7 +66,7 @@ CREATE TABLE quarantine_messages (
 );
 
 -- V1__create_clients_table.sql
-CREATE TABLE clients (
+create TABLE clients (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     client_id VARCHAR(255) UNIQUE NOT NULL,
     client_secret VARCHAR(255) NOT NULL,
@@ -74,9 +81,9 @@ CREATE TABLE clients (
 );
 
 -- Create index for faster lookups
-CREATE INDEX idx_clients_client_id ON clients(client_id);
-CREATE INDEX idx_clients_active ON clients(is_active);
+create index idx_clients_client_id on clients(client_id);
+create index idx_clients_active on clients(is_active);
 
 -- Create sequence for step ordering
-CREATE SEQUENCE IF NOT EXISTS audit_step_sequence START 1;
+create sequence IF NOT EXISTS audit_step_sequence START 1;
 

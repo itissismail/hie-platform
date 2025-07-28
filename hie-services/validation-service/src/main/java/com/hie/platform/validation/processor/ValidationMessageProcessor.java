@@ -1,6 +1,6 @@
 package com.hie.platform.validation.processor;
 
-import com.hie.platform.shared.audit.annotation.AuditStep;
+import com.hie.platform.shared.audit.annotation.NonReactiveAuditStep;
 import com.hie.platform.shared.audit.model.MessageStatus;
 import com.hie.platform.shared.rabbitmq.common.RabbitMQProperties;
 import com.hie.platform.shared.rabbitmq.consumer.processor.MessageProcessor;
@@ -20,6 +20,8 @@ import java.util.Map;
  * This class contains the business logic for processing HL7 validation messages.
  * It implements the MessageProcessor interface and is used by ValidationConsumer
  * through the AbstractMessageConsumer framework.
+ *
+ * UPDATED: Added @NonReactiveAuditStep for internal processing steps
  *
  * Responsibilities:
  * - Validate input parameters and message metadata
@@ -43,11 +45,14 @@ public class ValidationMessageProcessor implements MessageProcessor {
      * - Content retrieval from MinIO
      * - Retry logic setup
      *
+     * UPDATED: Added @NonReactiveAuditStep for detailed processing audit
+     *
      * @param queueMessage The parsed queue message with metadata
      * @param messageContent The actual HL7 content retrieved from MinIO
      * @return ProcessingResult indicating success/failure and next steps
      */
     @Override
+    @NonReactiveAuditStep(serviceName = "Validation-Service", stepName = MessageStatus.PROCESSING, generateNewMessageId = false)
     public ProcessingResult processMessage(QueueMessage queueMessage, String messageContent) {
         try {
             log.info("Starting HL7 validation processing - MessageId: {}", queueMessage.getMessageId());
@@ -93,7 +98,9 @@ public class ValidationMessageProcessor implements MessageProcessor {
 
     /**
      * Validate required fields in message payload
+     * UPDATED: Added @NonReactiveAuditStep for field validation audit
      */
+    @NonReactiveAuditStep(serviceName = "Validation-Service", stepName = MessageStatus.VALIDATED, generateNewMessageId = false)
     private ProcessingResult validateRequiredFields(String organizationId, String hl7MessageType, String minioPath) {
         if (organizationId == null || organizationId.isEmpty()) {
             return ProcessingResult.failure("Missing organizationId in message payload");

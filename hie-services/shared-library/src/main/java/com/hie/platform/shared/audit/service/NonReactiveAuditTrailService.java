@@ -16,6 +16,8 @@ import java.util.concurrent.CompletableFuture;
  * Author M.Ismail
  * Non-reactive audit trail service for message-based services
  * Date 28-July-2025
+ *
+ * UPDATED: Enhanced to properly handle messageId relationships and provide both async and sync methods
  */
 @Service
 @RequiredArgsConstructor
@@ -25,10 +27,11 @@ public class NonReactiveAuditTrailService {
     private final MessageAuditRepository messageAuditRepository;
 
     /**
-     * Start audit step with new message ID while preserving correlation ID
+     * Start audit step - Async version
+     * Creates audit record with new messageId while linking to previous message via previousMessageId
      *
-     * @param correlationId Original correlation ID to maintain
-     * @param previousMessageId Previous message ID from upstream service
+     * @param correlationId Original correlation ID to maintain throughout the flow
+     * @param previousMessageId Previous message ID from upstream service (can be null for first service)
      * @param serviceName Current service name
      * @param stepName Step being executed
      * @param requestPayload Optional request payload
@@ -53,7 +56,7 @@ public class NonReactiveAuditTrailService {
                     .status("IN_PROGRESS")
                     .requestPayload(truncatePayload(requestPayload))
                     .createdAt(LocalDateTime.now())
-                    .stepSequence(1) // Will be updated by database trigger or service
+                    .stepSequence(calculateStepSequence(correlationId))
                     .build();
 
             messageAuditRepository.save(audit)
@@ -72,6 +75,85 @@ public class NonReactiveAuditTrailService {
     }
 
     /**
+     * Start audit step - Synchronous version
+     * Used by aspect when immediate processing is needed
+     *
+     * @param correlationId Correlation ID for the entire flow
+     * @param previousMessageId Previous message ID from upstream service
+     * @param serviceName Current service name
+     * @param stepName Step being executed
+     * @param requestPayload Optional request payload
+     * @return New message ID for this service's processing
+     */
+    public UUID startStepSync(UUID correlationId, UUID previousMessageId,
+                              String serviceName, String stepName, String requestPayload) {
+        UUID newMessageId = UUID.randomUUID();
+
+        log.debug("Starting audit step synchronously: {} for service: {}, newMessageId: {}, correlationId: {}, previousMessageId: {}",
+                stepName, serviceName, newMessageId, correlationId, previousMessageId);
+
+        try {
+            MessageAudit audit = MessageAudit.builder()
+                    .messageId(newMessageId)
+                    .correlationId(correlationId)
+                    .previousMessageId(previousMessageId)
+                    .serviceName(serviceName)
+                    .stepName(stepName)
+                    .status("IN_PROGRESS")
+                    .requestPayload(truncatePayload(requestPayload))
+                    .createdAt(LocalDateTime.now())
+                    .stepSequence(calculateStepSequence(correlationId))
+                    .build();
+
+            messageAuditRepository.save(audit)
+                    .doOnSuccess(savedAudit -> log.debug("Successfully started audit step synchronously: {} with messageId: {}",
+                            stepName, newMessageId))
+                    .doOnError(error -> log.error("Failed to start audit step synchronously: {} with messageId: {}",
+                            stepName, newMessageId, error))
+                    .subscribe();
+
+        } catch (Exception e) {
+            log.error("Error starting audit step synchronously: {} for messageId: {}", stepName, newMessageId, e);
+        }
+
+        return newMessageId;
+    }
+
+    /**
+     * Start audit step with existing messageId - Synchronous version
+     * Used when messageId is already generated (like in ValidationConsumer)
+     */
+    public void startStepWithExistingMessageId(UUID messageId, UUID correlationId, UUID previousMessageId,
+                                               String serviceName, String stepName, String requestPayload) {
+        log.debug("Starting audit step with existing messageId: {} for service: {}, correlationId: {}, previousMessageId: {}",
+                messageId, serviceName, correlationId, previousMessageId);
+
+        try {
+            MessageAudit audit = MessageAudit.builder()
+                    .messageId(messageId)
+                    .correlationId(correlationId)
+                    .previousMessageId(previousMessageId)
+                    .serviceName(serviceName)
+                    .stepName(stepName)
+                    .status("IN_PROGRESS")
+                    .requestPayload(truncatePayload(requestPayload))
+                    .createdAt(LocalDateTime.now())
+                    .stepSequence(calculateStepSequence(correlationId))
+                    .build();
+
+            messageAuditRepository.save(audit)
+                    .doOnSuccess(savedAudit -> log.debug("Successfully started audit step with existing messageId: {} for step: {}",
+                            messageId, stepName))
+                    .doOnError(error -> log.error("Failed to start audit step with existing messageId: {} for step: {}",
+                            messageId, stepName, error))
+                    .subscribe();
+
+        } catch (Exception e) {
+            log.error("Error starting audit step with existing messageId: {} for step: {}", messageId, stepName, e);
+        }
+    }
+
+    /**
      * Complete audit step successfully
      */
     @Async
@@ -83,7 +165,7 @@ public class NonReactiveAuditTrailService {
                 stepName, messageId, processingTimeMs);
 
         try {
-            // First try to find existing audit record to update
+            // Find existing audit record to update
             messageAuditRepository.findLatestStepByMessageIdAndStepName(messageId, stepName)
                     .switchIfEmpty(createNewAuditRecord(messageId, correlationId, serviceName, stepName))
                     .flatMap(existingAudit -> {
@@ -118,7 +200,7 @@ public class NonReactiveAuditTrailService {
         log.debug("Failing audit step: {} for messageId: {}, error: {}", stepName, messageId, errorMessage);
 
         try {
-            // First try to find existing audit record to update
+            // Find existing audit record to update
             messageAuditRepository.findLatestStepByMessageIdAndStepName(messageId, stepName)
                     .switchIfEmpty(createNewAuditRecord(messageId, correlationId, serviceName, stepName))
                     .flatMap(existingAudit -> {
@@ -143,54 +225,33 @@ public class NonReactiveAuditTrailService {
     }
 
     /**
-     * Synchronous version of startStep for immediate use
-     */
-    public UUID startStepSync(UUID correlationId, UUID previousMessageId,
-                              String serviceName, String stepName, String requestPayload) {
-        UUID newMessageId = UUID.randomUUID();
-
-        log.debug("Starting audit step synchronously: {} for service: {}, newMessageId: {}",
-                stepName, serviceName, newMessageId);
-
-        try {
-            MessageAudit audit = MessageAudit.builder()
-                    .messageId(newMessageId)
-                    .correlationId(correlationId)
-                    .previousMessageId(previousMessageId)
-                    .serviceName(serviceName)
-                    .stepName(stepName)
-                    .status("IN_PROGRESS")
-                    .requestPayload(truncatePayload(requestPayload))
-                    .createdAt(LocalDateTime.now())
-                    .stepSequence(1)
-                    .build();
-
-            messageAuditRepository.save(audit)
-                    .doOnSuccess(savedAudit -> log.debug("Successfully started audit step synchronously: {}", stepName))
-                    .doOnError(error -> log.error("Failed to start audit step synchronously: {}", stepName, error))
-                    .subscribe();
-
-        } catch (Exception e) {
-            log.error("Error starting audit step synchronously: {} for messageId: {}", stepName, newMessageId, e);
-        }
-
-        return newMessageId;
-    }
-
-    /**
      * Create new audit record when one doesn't exist
      */
     private Mono<MessageAudit> createNewAuditRecord(UUID messageId, UUID correlationId,
                                                     String serviceName, String stepName) {
-        return Mono.fromSupplier(() -> MessageAudit.builder()
-                .messageId(messageId)
-                .correlationId(correlationId)
-                .serviceName(serviceName)
-                .stepName(stepName)
-                .status("IN_PROGRESS")
-                .createdAt(LocalDateTime.now())
-                .stepSequence(1)
-                .build());
+        return Mono.fromSupplier(() -> {
+            log.warn("Creating new audit record for messageId: {} as existing record not found", messageId);
+            return MessageAudit.builder()
+                    .messageId(messageId)
+                    .correlationId(correlationId)
+                    .serviceName(serviceName)
+                    .stepName(stepName)
+                    .status("IN_PROGRESS")
+                    .createdAt(LocalDateTime.now())
+                    .stepSequence(calculateStepSequence(correlationId))
+                    .build();
+        });
+    }
+
+    /**
+     * Calculate step sequence based on correlation ID
+     * This could be enhanced to query the database for proper sequencing
+     */
+    private Integer calculateStepSequence(UUID correlationId) {
+        // For now, return 1. This could be enhanced to:
+        // 1. Query database for max sequence by correlationId
+        // 2. Return nextSequence + 1
+        return 1;
     }
 
     /**

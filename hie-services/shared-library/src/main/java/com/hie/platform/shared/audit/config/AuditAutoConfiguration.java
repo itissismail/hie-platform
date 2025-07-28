@@ -38,21 +38,18 @@ public class AuditAutoConfiguration {
         return new ObjectMapper();
     }
 
-   /* @Bean
+    @Bean
     @ConditionalOnMissingBean
     public NonReactiveAuditTrailService nonReactiveAuditTrailService(
             com.hie.platform.shared.audit.repository.MessageAuditRepository messageAuditRepository) {
         return new NonReactiveAuditTrailService(messageAuditRepository);
     }
 
-    *//**
-     * Non-reactive audit aspect bean
-     * This will be auto-created by @ComponentScan, but explicitly defining for clarity
-     *//*
+
     @Bean
     @ConditionalOnMissingBean
     public NonReactiveAuditTrailAspect nonReactiveAuditTrailAspect(
             NonReactiveAuditTrailService nonReactiveAuditTrailService) {
         return new NonReactiveAuditTrailAspect(nonReactiveAuditTrailService);
-    }*/
+    }
 }
