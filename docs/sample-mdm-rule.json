@@ -1,0 +1,219 @@
+{
+  "version": "1",
+  "mdmTypes":[ "Patient", "Practitioner"],
+  "candidateSearchParams": [
+    {
+      "resourceType": "Patient",
+      "searchParams": [
+        "birthdate"
+      ]
+    },{
+      "resourceType": "Practitioner",
+      "searchParams": [
+        "identifier"
+      ]
+    }
+  ],
+  "candidateFilterSearchParams": [],
+  "matchFields": [
+    {
+      "name": "DateOfBirth",
+      "resourceType": "Patient",
+      "resourcePath": "birthDate",
+      "matcher": {
+        "algorithm": "STRING",
+        "exact": "false"
+      }
+    },
+    {
+      "name": "Member-Id",
+      "resourceType": "Patient",
+      "resourcePath": "identifier",
+      "matcher": {
+        "algorithm": "IDENTIFIER"
+      }
+    },
+    {
+      "name": "FirstName",
+      "resourceType": "Patient",
+      "resourcePath": "name.given",
+      "matcher": {
+        "algorithm": "STRING",
+        "exact": "false"
+      }
+    },
+    {
+      "name": "LastName",
+      "resourceType": "Patient",
+      "resourcePath": "name.family",
+      "matcher": {
+        "algorithm": "STRING",
+        "exact": "false"
+      }
+    },
+    {
+      "name": "Phone-number",
+      "resourceType": "Patient",
+      "resourcePath": "telecom.value",
+      "matcher": {
+        "algorithm": "STRING"
+      }
+    },
+    {
+      "name": "Gender",
+      "resourceType": "Patient",
+      "resourcePath": "gender",
+      "matcher": {
+        "algorithm": "STRING",
+        "exact": "false"
+      }
+    },
+    {
+      "name": "Building-number",
+      "resourceType": "Patient",
+      "resourcePath": "address.text",
+      "matcher": {
+        "algorithm": "STRING",
+        "exact": "false"
+      }
+    },
+    {
+      "name": "Middle-Initial",
+      "resourceType": "Patient",
+      "resourcePath": "name.text",
+      "matcher": {
+        "algorithm": "DOUBLE_METAPHONE"
+      }
+    },
+    
+     {
+      "name": "Practitioner-NPI",
+      "resourceType": "Practitioner",
+      "resourcePath": "identifier",
+      "matcher": {
+        "algorithm": "IDENTIFIER"
+      }
+    },
+    {
+      "name": "Practitioner-FirstName",
+      "resourceType": "Practitioner",
+      "resourcePath": "name.given",
+      "matcher": {
+        "algorithm": "STRING",
+        "exact": "false"
+      }
+    },
+    {
+      "name": "Practitioner-LastName",
+      "resourceType": "Practitioner",
+      "resourcePath": "name.family",
+      "matcher": {
+        "algorithm": "STRING",
+        "exact": "false"
+      }
+    }
+  ],
+  "matchResultMap": {
+    "Member-Id,firstname-meta,Phone-number,Building-number,Gender,DateOfBirth": "MATCH",
+    "Member-Id,firstname-meta,LastName,Phone-number,Gender,DateOfBirth": "MATCH",
+    "DateOfBirth,Member-Id,Gender,Phone-number": "MATCH",
+    "DateOfBirth,LastName,Middle-Initial,firstname-meta,Gender": "MATCH",
+    "DateOfBirth,Member-Id,LastName": "MATCH",
+    "DateOfBirth,Member-Id,Gender,Middle-Initial": "MATCH",
+    "DateOfBirth,firstname-meta,LastName,Phone-number": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Building-number": "MATCH",
+    "Member-Id,firstname-meta,LastName,Phone-number,DateOfBirth": "MATCH",
+    "DateOfBirth,firstname-meta,LastName,Middle-Initial,Gender,Member-Id": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Middle-Initial,Gender,Member-Id": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Middle-Initial,Gender,Member-Id": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Gender,Member-Id": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Gender,firstname-meta": "MATCH",
+    "DateOfBirth,firstname-meta,LastName,Gender,Member-Id": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Gender,Member-Id": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Middle-Initial,Gender,FirstName": "MATCH",
+    "Member-Id,FirstName,Phone-number,Building-number,DateOfBirth": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Middle-Initial,Gender,Member-Id": "MATCH",
+    "Member-Id,FirstName,LastName,Phone-number,Building-number,Gender,DateOfBirth": "MATCH",
+    "DateOfBirth,Member-Id,Gender,LastName": "MATCH",
+    "DateOfBirth,firstname-meta,LastName,Gender,Phone-number": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Gender,Building-number": "MATCH",
+    "Member-Id,firstname-meta,LastName,Phone-number,Building-number,Middle-Initial,Gender,DateOfBirth": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Middle-Initial,Member-Id": "MATCH",
+    "DateOfBirth,firstname-meta,LastName,Middle-Initial,Member-Id": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Middle-Initial,Member-Id": "MATCH",
+    "DateOfBirth,Phone-number,Middle-Initial,Gender,Member-Id": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Middle-Initial,Member-Id": "MATCH",
+    "DateOfBirth,Member-Id,Gender,firstname-meta": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Member-Id": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Middle-Initial,Gender,Building-number": "MATCH",
+    "DateOfBirth,firstname-meta,LastName,Member-Id": "MATCH",
+    "DateOfBirth,Phone-number,Building-number,Middle-Initial,Gender,Member-Id": "MATCH",
+    "DateOfBirth,firstname-meta,Middle-Initial,Gender,Member-Id": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,firstname-meta": "MATCH",
+    "DateOfBirth,firstname-meta,LastName,Middle-Initial,Gender,Phone-number": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Member-Id": "MATCH",
+    "DateOfBirth,firstname-meta,Middle-Initial,Gender,Member-Id": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Middle-Initial,firstname-meta": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Gender,Member-Id": "MATCH",
+    "DateOfBirth,Phone-number,Building-number,Gender,Member-Id": "MATCH",
+    "Member-Id,firstname-meta,LastName,Phone-number,Building-number,DateOfBirth": "MATCH",
+    "Member-Id,firstname-meta,LastName,Phone-number,Middle-Initial,Gender,DateOfBirth": "MATCH",
+    "Member-Id,firstname-meta,LastName,Phone-number,Building-number,Middle-Initial,DateOfBirth": "MATCH",
+    "Member-Id,firstname-meta,Phone-number,Building-number,Middle-Initial,Gender,DateOfBirth": "MATCH",
+    "Member-Id,firstname-meta,LastName,Phone-number,Middle-Initial,DateOfBirth": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Middle-Initial,Building-number": "MATCH",
+    "DateOfBirth,Phone-number,Building-number,Middle-Initial,Member-Id": "MATCH",
+    "DateOfBirth,firstname-meta,Middle-Initial,Member-Id": "MATCH",
+    "DateOfBirth,firstname-meta,LastName,Middle-Initial,Phone-number": "MATCH",
+    "DateOfBirth,Phone-number,Middle-Initial,Member-Id": "MATCH",
+    "DateOfBirth,LastName,Middle-Initial,Member-Id": "MATCH",
+    "DateOfBirth,Member-Id,Phone-number": "MATCH",
+    "DateOfBirth,LastName,Phone-number,Member-Id": "MATCH",
+    "DateOfBirth,Member-Id,firstname-meta": "MATCH",
+    "DateOfBirth,Phone-number,Building-number,Member-Id": "MATCH",
+    "DateOfBirth,Member-Id,Middle-Initial": "MATCH",
+    "Member-Id,firstname-meta,Phone-number,Building-number,Middle-Initial,DateOfBirth": "MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Gender": "POSSIBLE_MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Middle-Initial": "POSSIBLE_MATCH",
+    "DateOfBirth,firstname-meta,LastName,Gender": "POSSIBLE_MATCH",
+    "DateOfBirth,firstname-meta,Middle-Initial,Gender": "POSSIBLE_MATCH",
+    "LastName,Middle-Initial,Gender,DateOfBirth,firstname-meta": "POSSIBLE_MATCH",
+    "DateOfBirth,firstname-meta,Phone-number": "POSSIBLE_MATCH",
+    "DateOfBirth,firstname-meta,LastName,Middle-Initial": "POSSIBLE_MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Middle-Initial,Gender": "POSSIBLE_MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number": "POSSIBLE_MATCH",
+    "DateOfBirth,Phone-number,Building-number,Middle-Initial,Gender": "POSSIBLE_MATCH",
+    "DateOfBirth,firstname-meta,LastName": "POSSIBLE_MATCH",
+    "DateOfBirth,firstname-meta,Middle-Initial": "POSSIBLE_MATCH",
+    "DateOfBirth,Phone-number,Building-number,Middle-Initial": "POSSIBLE_MATCH",
+    "DateOfBirth,LastName,Phone-number,Building-number,Gender": "POSSIBLE_MATCH",
+    "DateOfBirth,LastName,Phone-number,Middle-Initial,Gender": "POSSIBLE_MATCH",
+    "DateOfBirth,Member-Id": "POSSIBLE_MATCH",
+    "DateOfBirth,LastName,Phone-number,Middle-Initial": "POSSIBLE_MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Middle-Initial,Gender": "POSSIBLE_MATCH",
+    "DateOfBirth,Member-Id,Gender": "POSSIBLE_MATCH",
+    "DateOfBirth,firstname-meta,Phone-number,Middle-Initial": "POSSIBLE_MATCH",
+    "DateOfBirth,Phone-number,Gender": "NO_MATCH",
+    "DateOfBirth,Phone-number": "NO_MATCH",
+    "DateOfBirth,Gender": "NO_MATCH",
+    "DateOfBirth,Phone-number,Building-number": "NO_MATCH",
+    "DateOfBirth,LastName,Phone-number,Gender": "NO_MATCH",
+    "DateOfBirth,LastName,Phone-number": "NO_MATCH",
+    "DateOfBirth,LastName": "NO_MATCH",
+    "DateOfBirth,Middle-Initial,Gender": "NO_MATCH",
+    "DateOfBirth,Middle-Initial": "NO_MATCH",
+    "DateOfBirth,LastName,Gender": "NO_MATCH",
+    "DateOfBirth,Phone-number,Middle-Initial": "NO_MATCH",
+    "DateOfBirth,Phone-number,Middle-Initial,Gender": "NO_MATCH",
+    "DateOfBirth,firstname-meta,Gender": "NO_MATCH",
+    "DateOfBirth,firstname-meta": "NO_MATCH",
+    "DateOfBirth,Phone-number,Building-number,Gender": "NO_MATCH",
+    "DateOfBirth,LastName,Middle-Initial": "NO_MATCH",
+    "DateOfBirth,LastName,Middle-Initial,Gender": "NO_MATCH",
+    
+    "Practitioner-NPI,Practitioner-firstname-meta,Practitioner-LastName": "MATCH",
+	"Practitioner-NPI,Practitioner-firstname-meta": "POSSIBLE_MATCH",
+	"Practitioner-NPI,Practitioner-LastName": "POSSIBLE_MATCH",	
+	"Practitioner-firstname-meta,Practitioner-LastName": "NO_MATCH"
+  }
+}

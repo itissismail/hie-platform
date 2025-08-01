@@ -11,3 +11,9 @@ roles:
       /R4/Patient: ["GET", "POST", "PUT"]
       /intake/ingest: ["GET","POST"]
       /R4/Condition/**: ["*"]
+
+  - roleName: "app-admin"
+    resources:
+      /R4/Patient: ["GET", "POST", "PUT", "DELETE"]
+      /R4/Condition/**: ["*"]
+      /intake/**: ["*"]

@@ -114,6 +114,9 @@ public class ValidationMessageProcessor implements MessageProcessor {
             return ProcessingResult.failure("Missing minioPath in message payload");
         }
 
+        log.debug("Required fields validated successfully - OrganizationId: {}, MessageType: {}, MinioPath: {}",
+                organizationId, hl7MessageType, minioPath);
+
         return ProcessingResult.success();
     }
 
