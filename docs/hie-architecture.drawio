@@ -1,0 +1,49 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36" version="26.1.1">
+  <diagram name="HIE Architecture" id="HIEFlow">
+    <mxGraphModel dx="1553" dy="899" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ext" value="External System (HL7 v2 Messages: ADT/ORU/MDM)" style="shape=rectangle;rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="20" y="120" width="240" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="API Gateway Service (JWT Validation &amp; Role Check)" style="shape=rectangle;rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="10" y="270" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="router" value="Message Router Service&#xa;- Upload HL7 to Object Storage&#xa;- Add Audit Entry&#xa;- Publish to Validation Queue" style="shape=rectangle;rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" parent="1" vertex="1">
+          <mxGeometry x="360" y="250" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="validation" value="Validation Service&#xa;- Quarantine Logic&#xa;- Forward Valid → Intake Queue" style="shape=rectangle;rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="370" y="420" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="intake" value="Intake Service&#xa;- MPI Logic (Patient Linking)&#xa;- Forward → Conversion Queue" style="shape=rectangle;rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="370" y="600" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="conversion" value="Conversion Service&#xa;- HL7 v2 → FHIR&#xa;- Forward → Storage Queue" style="shape=rectangle;rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="370" y="780" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="storage" value="Storage Service&#xa;- Business Logic&#xa;- Save to Database" style="shape=rectangle;rounded=1;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#4a7ebb;" parent="1" vertex="1">
+          <mxGeometry x="380" y="950" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ext-api" parent="1" source="ext" target="api" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="api-router" parent="1" source="api" target="router" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="router-validation" parent="1" source="router" target="validation" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="validation-intake" parent="1" source="validation" target="intake" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="intake-conversion" parent="1" source="intake" target="conversion" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="conversion-storage" parent="1" source="conversion" target="storage" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
