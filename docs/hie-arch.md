@@ -1,10 +1,7 @@
-# HIE Architecture Diagram
-
-```mermaid
 flowchart LR
 
     subgraph External[External System]
-        extMsg[HL7 v2 Messages (ADT/ORU/MDM)]
+        extMsg[HL7 v2 Messages ADT ORU MDM]
     end
 
     subgraph Gateway[API Gateway Service]
@@ -12,28 +9,28 @@ flowchart LR
     end
 
     subgraph Router[Message Router Service]
-        store[Upload Raw HL7 → Object Storage (S3/MinIO)]
-        audit[Audit Entry → Database]
-        vq[Publish → Validation Queue (RabbitMQ)]
+        store[Upload Raw HL7 to Object Storage S3 MinIO]
+        audit[Audit Entry to Database]
+        vq[Publish to Validation Queue RabbitMQ]
     end
 
     subgraph Validation[Validation Service]
         quarantine[Quarantine Rules & Validation]
-        iq[If Valid → Intake Queue]
+        iq[If Valid to Intake Queue]
     end
 
     subgraph Intake[Intake Service]
-        mpi[MPI Logic (Patient Linking)]
-        cq[Publish → Conversion Queue]
+        mpi[MPI Logic Patient Linking]
+        cq[Publish to Conversion Queue]
     end
 
     subgraph Conversion[Conversion Service]
-        fhir[FHIR Conversion (HL7 v2 → FHIR)]
-        sq[Publish → Storage Queue]
+        fhir[FHIR Conversion HL7 v2 to FHIR]
+        sq[Publish to Storage Queue]
     end
 
     subgraph Storage[Storage Service]
-        persist[Business Logic & Save to Database]
+        persist[Business Logic and Save to Database]
     end
 
     %% Connections
@@ -63,3 +60,4 @@ flowchart LR
 
     %% Storage flow
     Storage --> persist
+
