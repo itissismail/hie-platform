@@ -35,7 +35,12 @@
         <jaeger.version>1.8.1</jaeger.version>
         <hie.api.gateway.version>{version}</hie.api.gateway.version>
         <hie.api.sharedlib.version>{project.version}</hie.api.sharedlib.version>
-<!--        <hie.api.artifact.name>api-gateway</hie.api.artifact.name>-->
+
+        <hie.gateway.artifcat.name>hie-api-gateway</hie.gateway.artifcat.name>
+        <hie.router.artifcat.name>hie-message-router</hie.router.artifcat.name>
+        <hie.validation.artifcat.name>hie-validation-service</hie.validation.artifcat.name>
+        <hie.auth.artifcat.name>hie-auth-service</hie.auth.artifcat.name>
+
     </properties>
 
     <dependencyManagement>

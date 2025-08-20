@@ -1,0 +1,98 @@
+server:
+  port: 8081
+  error:
+    include-stacktrace: never
+
+spring:
+  application:
+    name: message-router
+#  main:
+#    web-application-type: reactive
+  rabbitmq:
+    host: ${RABBITMQ_HOST:hie-rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:admin123}
+    virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
+
+  # R2DBC Configuration for Reactive Database Access
+  r2dbc:
+    url: r2dbc:postgresql://hie-postgres:5432/hie_platform
+    username: ${DB_USERNAME:hie_user}
+    password: ${DB_PASSWORD:hie_password}
+    pool:
+      enabled: true
+      initial-size: 10
+      max-size: 20
+      max-idle-time: 30m
+      validation-query: SELECT 1
+
+# MinIO Configuration
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://hie-minio:9000}
+  access-key: ${MINIO_ACCESS_KEY:R8HAZADEIVQWVW441MJO}
+  secret-key: ${MINIO_SECRET_KEY:MxTgZ31SD8Dj8CVctAGR55rcCvkWOR93jR1XZC+i}
+  bucket-name: ${MINIO_BUCKET_NAME:hl7-messages}
+  region: ${MINIO_REGION:us-east-1}
+  secure: ${MINIO_SECURE:false}
+
+# RabbitMQ Configuration
+rabbitmq:
+  host: ${RABBITMQ_HOST:hie-rabbitmq}
+  port: ${RABBITMQ_PORT:5672}
+  username: ${RABBITMQ_USERNAME:admin}
+  password: ${RABBITMQ_PASSWORD:admin123}
+  virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
+  exchange-name: ${RABBITMQ_EXCHANGE_NAME:hl7-processing-exchange}
+  service-name: ${RABBITMQ_SERVICE_NAME:message-router-service}
+  producer:
+    enabled: true
+
+  queues:
+    hl7-processing: ${RABBITMQ_QUEUE_RAW_PROCESSING:hl7-raw-msg-queue}
+    hl7-validation: ${RABBITMQ_QUEUE_VALIDATED_MSG:hl7-validated-msg-queue}
+    hl7-conversion: ${RABBITMQ_QUEUE_CONVERSION:hl7-conversion-queue}
+    hl7-storage: ${RABBITMQ_QUEUE_STORAGE:hl7-storage-queue}
+    dead-letter: ${RABBITMQ_QUEUE_DEAD_LETTER:hl7-dead-letter-queue}
+
+  routing-keys:
+    hl7-processing: ${RABBITMQ_ROUTING_RAW_PROCESSING:hl7.raw.processing}
+    hl7-validation: ${RABBITMQ_ROUTING_VALIDATION:hl7.validation}
+    hl7-conversion: ${RABBITMQ_ROUTING_CONVERSION:hl7.conversion}
+    hl7-storage: ${RABBITMQ_ROUTING_STORAGE:hl7.storage}
+
+  message-settings:
+    message-ttl: ${RABBITMQ_MESSAGE_TTL:3600000} # 1 hour
+    max-retries: ${RABBITMQ_MAX_RETRIES:3}
+    durable: ${RABBITMQ_DURABLE:true}
+    persistent: ${RABBITMQ_PERSISTENT:true}
+
+
+# Logging Configuration
+logging:
+  level:
+    com.hie.platform: DEBUG
+    org.springframework.amqp: DEBUG
+    io.minio: DEBUG
+    org.springframework.data.r2dbc: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{36}] - %msg%n"
+
+# Management and Monitoring
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: prometheus, health, info
+#  endpoint:
+#    prometheus:
+#      enabled: true
+#  metrics:
+#    export:
+#      prometheus:
+#        enabled: true
+
+hie:
+  audit:
+    database:
+      enabled: false

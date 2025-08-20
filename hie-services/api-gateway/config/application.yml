@@ -9,12 +9,12 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: http://localhost:8082/oauth2/jwks
+          jwk-set-uri: http://hie-auth-service:8082/oauth2/jwks
   cloud:
     gateway:
       routes:
         - id: message-router-ingest
-          uri: http://localhost:8081
+          uri: http://hie-message-router:8081
           predicates:
             - Path=/intake/**
           filters:
@@ -24,7 +24,7 @@ spring:
 
 
         - id: oauth-service-token
-          uri: http://localhost:8082
+          uri: http://hie-auth-service:8082
           predicates:
             - Path=/oauth2/**
 #          filters:
@@ -50,7 +50,7 @@ spring:
   # R2DBC Configuration for Reactive Database Access
   # R2DBC Configuration for Reactive Database Access
   r2dbc:
-    url: ${DB_R2DBC_URL:r2dbc:postgresql://localhost:5432/hie_platform}
+    url: ${DB_R2DBC_URL:r2dbc:postgresql://hie-postgres:5432/hie_platform}
     username: ${DB_USERNAME:hie_user}
     password: ${DB_PASSWORD:hie_password}
     pool:
@@ -67,7 +67,7 @@ jwt:
 
 auth:
   service:
-    url: http://localhost:8082
+    url: http://hie-auth-service:8082
 
 #  security:
 #    user:

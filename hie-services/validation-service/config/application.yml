@@ -1,0 +1,137 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: validation-service
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:hie-rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:admin123}
+    virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
+
+  # Database Configuration
+  # R2DBC Configuration for Reactive Database Access
+  r2dbc:
+    url: r2dbc:postgresql://hie-postgres:5432/hie_platform
+    username: ${DB_USERNAME:hie_user}
+    password: ${DB_PASSWORD:hie_password}
+    pool:
+      enabled: true
+      initial-size: 10
+      max-size: 20
+      max-idle-time: 30m
+      validation-query: SELECT 1
+
+# RabbitMQ Configuration
+rabbitmq:
+  host: ${RABBITMQ_HOST:hie-rabbitmq}
+  port: ${RABBITMQ_PORT:5672}
+  username: ${RABBITMQ_USERNAME:admin}
+  password: ${RABBITMQ_PASSWORD:admin123}
+  virtual-host: ${RABBITMQ_VIRTUAL_HOST:hie-vhost}
+  exchange-name: ${RABBITMQ_EXCHANGE_NAME:hl7-processing-exchange}
+  service-name: ${RABBITMQ_SERVICE_NAME:validation-service}
+
+
+  # Queue Names
+  queues:
+    hl7-processing: ${RABBITMQ_QUEUE_RAW_PROCESSING:hl7-raw-msg-queue}
+    hl7-validation: ${RABBITMQ_QUEUE_VALIDATED_MSG:hl7-validated-msg-queue}
+    hl7-conversion: ${RABBITMQ_QUEUE_CONVERSION:hl7-conversion-queue}
+    hl7-storage: ${RABBITMQ_QUEUE_STORAGE:hl7-storage-queue}
+    dead-letter: ${RABBITMQ_QUEUE_DEAD_LETTER:hl7-dead-letter-queue}
+
+  routing-keys:
+    hl7-processing: ${RABBITMQ_ROUTING_RAW_PROCESSING:hl7.raw.processing}
+    hl7-validation: ${RABBITMQ_ROUTING_VALIDATION:hl7.validation}
+    hl7-conversion: ${RABBITMQ_ROUTING_CONVERSION:hl7.conversion}
+    hl7-storage: ${RABBITMQ_ROUTING_STORAGE:hl7.storage}
+
+  # Message Settings
+  message-settings:
+    message-ttl: ${RABBITMQ_MESSAGE_TTL:3600000} # 1 hour
+    max-retries: ${RABBITMQ_MAX_RETRIES:3}
+    durable: ${RABBITMQ_DURABLE:true}
+    persistent: ${RABBITMQ_PERSISTENT:true}
+
+  # Consumer Settings
+  consumer:
+    concurrent-consumers: ${RABBITMQ_CONCURRENT_CONSUMERS:2}
+    max-concurrent-consumers: ${RABBITMQ_MAX_CONCURRENT_CONSUMERS:5}
+    prefetch-count: ${RABBITMQ_PREFETCH_COUNT:10}
+    auto-startup: ${RABBITMQ_AUTO_STARTUP:true}
+    receive-timeout: ${RABBITMQ_RECEIVE_TIMEOUT:30000}
+    shutdown-timeout: ${RABBITMQ_SHUTDOWN_TIMEOUT:5000}
+    default-requeue-rejected: ${RABBITMQ_DEFAULT_REQUEUE_REJECTED:false}
+    enabled: true
+
+  producer:
+    enabled: false
+    # Retry Configuration
+    retry:
+      enabled: ${RABBITMQ_RETRY_ENABLED:true}
+      max-attempts: ${RABBITMQ_RETRY_MAX_ATTEMPTS:3}
+      initial-interval: ${RABBITMQ_RETRY_INITIAL_INTERVAL:1000}
+      multiplier: ${RABBITMQ_RETRY_MULTIPLIER:2.0}
+      max-interval: ${RABBITMQ_RETRY_MAX_INTERVAL:10000}
+
+## MinIO Configuration (for file retrieval)
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://hie-minio:9000}
+  access-key: ${MINIO_ACCESS_KEY:R8HAZADEIVQWVW441MJO}
+  secret-key: ${MINIO_SECRET_KEY:MxTgZ31SD8Dj8CVctAGR55rcCvkWOR93jR1XZC+i}
+  bucket-name: ${MINIO_BUCKET_NAME:hl7-messages}
+  region: ${MINIO_REGION:us-east-1}
+  secure: ${MINIO_SECURE:false}
+
+# Logging Configuration
+logging:
+  level:
+    com.hie.platform: DEBUG
+    org.springframework.amqp: INFO
+    com.rabbitmq: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Management and Health Check
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: health,info,metrics,prometheus
+#  endpoint:
+#    health:
+#      show-details: always
+
+# Validation Service Specific Configuration
+validation:
+  hl7:
+    # Validation rules configuration
+    strict-mode: ${VALIDATION_STRICT_MODE:true}
+    validate-segments: ${VALIDATION_VALIDATE_SEGMENTS:true}
+    validate-fields: ${VALIDATION_VALIDATE_FIELDS:true}
+    validate-datatypes: ${VALIDATION_VALIDATE_DATATYPES:true}
+
+    # Supported HL7 message types for validation
+    supported-message-types:
+      - ADT  # For Now Allow Generic Message
+      - ADT^A01
+      - ADT^A02
+      - ADT^A03
+      - ADT^A04
+      - ADT^A05
+      - ADT^A08
+      - ORM^O01
+      - ORU^R01
+      - SIU^S12
+      - SIU^S13
+
+    # Validation timeout in milliseconds
+    validation-timeout: ${VALIDATION_TIMEOUT:30000}
+
+    # Maximum message size for validation (in bytes)
+    max-message-size: ${VALIDATION_MAX_MESSAGE_SIZE:1048576} # 1MB

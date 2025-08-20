@@ -16,9 +16,7 @@
     <name>API Gateway Service</name>
     <description>API Gateway for HIE Platform</description>
 
-    <properties>
-        <hie.gateway.artifcat.name>hie-api-gateway</hie.gateway.artifcat.name>
-    </properties>
+
     <dependencies>
         <!-- Shared module -->
         <dependency>
@@ -117,6 +115,13 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  api-gateway:
+    image: hie-api-gateway
+    container_name: hie-api-gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../hie-services/api-gateway/config:/app/config
+    depends_on:
+      - message-router
+      - validation-service
+      - auth-service
+    networks:
+      - hie-network
+
+  message-router:
+    image: hie-message-router
+    container_name: hie-message-router
+    ports:
+      - "8081:8081"
+    volumes:
+      - ../hie-services/message-router/config:/app/config
+    networks:
+      - hie-network
+
+  validation-service:
+    image: hie-validation-service
+    container_name: hie-validation-service
+    ports:
+      - "8082:8082"
+    volumes:
+      - ../hie-services/validation-service/config:/app/config
+    networks:
+      - hie-network
+
+  auth-service:
+    image: hie-auth-service
+    container_name: hie-auth-service
+    ports:
+      - "8083:8083"
+    volumes:
+      - ../hie-services/auth-service/config:/app/config
+    networks:
+      - hie-network
+
+networks:
+  hie-network:
+    driver: bridge
